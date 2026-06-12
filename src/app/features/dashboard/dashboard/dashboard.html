@@ -1,0 +1,121 @@
+<div class="min-h-screen bg-gray-100 font-sans">
+
+  <!-- Navbar / Header -->
+  <header class="bg-blue-600 shadow">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
+      <div class="flex items-center">
+        <svg class="h-8 w-8 text-white mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <h1 class="text-2xl font-bold text-white">Panel de Control - Sucursal Norte</h1>
+      </div>
+      <div class="flex items-center space-x-4">
+        <span class="text-blue-100 text-sm hidden md:block">Hola, Encargado</span>
+        <button class="bg-blue-700 hover:bg-blue-800 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+          Cerrar Sesión
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+    <!-- Toolbar -->
+    <div class="flex justify-between items-center mb-6">
+      <h2 class="text-xl font-semibold text-gray-800">Niños Activos en Sala ({{ sesiones.length }})</h2>
+      <button class="bg-green-500 hover:bg-green-600 text-white px-5 py-2.5 rounded-lg text-sm font-medium shadow flex items-center transition-colors">
+        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+        </svg>
+        Nuevo Ingreso
+      </button>
+    </div>
+
+    <!-- Grid de Tarjetas de Sesión -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+
+      @for (sesion of sesiones; track sesion.id) {
+        <div class="bg-white rounded-xl shadow-sm border-l-4 overflow-hidden transition-all duration-300 flex flex-col"
+             [ngClass]="{
+               'border-green-500': sesion.estadoAlerta === 'normal',
+               'border-orange-500 bg-orange-50': sesion.estadoAlerta === 'advertencia',
+               'border-red-600 bg-red-50': sesion.estadoAlerta === 'expirado'
+             }">
+
+          <div class="p-5 flex-grow">
+            <div class="flex justify-between items-start">
+              <div>
+                <h3 class="text-lg font-bold text-gray-900">{{ sesion.nombreNino }}</h3>
+                <p class="text-sm text-gray-500 mt-1">
+                  <span class="font-medium">Tutor:</span> {{ sesion.nombreTutor }}
+                </p>
+              </div>
+              <div class="text-right">
+                <!-- Temporizador Gigante -->
+                <div class="text-3xl font-black tracking-tighter"
+                     [ngClass]="{
+                       'text-green-600': sesion.estadoAlerta === 'normal',
+                       'text-orange-600': sesion.estadoAlerta === 'advertencia',
+                       'text-red-600 animate-pulse': sesion.estadoAlerta === 'expirado'
+                     }">
+                  {{ sesion.minutosRestantes }}<span class="text-sm font-medium ml-1">min</span>
+                </div>
+                <span class="text-xs font-semibold px-2 py-1 rounded-full uppercase tracking-wide mt-1 inline-block"
+                      [ngClass]="{
+                        'bg-green-100 text-green-800': sesion.estadoAlerta === 'normal',
+                        'bg-orange-200 text-orange-900': sesion.estadoAlerta === 'advertencia',
+                        'bg-red-200 text-red-900': sesion.estadoAlerta === 'expirado'
+                      }">
+                  @if (sesion.estadoAlerta === 'normal') { Jugando }
+                  @if (sesion.estadoAlerta === 'advertencia') { Por salir }
+                  @if (sesion.estadoAlerta === 'expirado') { Finalizado }
+                </span>
+              </div>
+            </div>
+
+            <div class="mt-4 pt-4 border-t border-gray-100/50 flex items-center text-sm text-gray-500">
+              <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+              </svg>
+              Ingreso: {{ sesion.horaIngreso | date:'shortTime' }}
+            </div>
+          </div>
+
+          <!-- Área de Botones -->
+          <div class="px-5 py-3 bg-gray-50/50 border-t border-gray-100 flex gap-2">
+            <!-- Botón de WhatsApp -->
+            <button (click)="enviarWhatsApp(sesion)"
+                    class="flex-1 flex justify-center items-center px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                    [ngClass]="{
+                      'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50': sesion.estadoAlerta === 'normal',
+                      'bg-green-500 text-white hover:bg-green-600 shadow-md ring-2 ring-green-500 ring-offset-2 ring-offset-orange-50': sesion.estadoAlerta === 'advertencia',
+                      'bg-green-600 text-white hover:bg-green-700 shadow-md': sesion.estadoAlerta === 'expirado'
+                    }">
+              <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
+              </svg>
+              Avisar
+            </button>
+
+            <button class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-lg text-sm font-medium transition-colors" title="Finalizar Sesión">
+              Retirar
+            </button>
+          </div>
+        </div>
+      }
+
+      <!-- Empty State -->
+      @if (sesiones.length === 0) {
+        <div class="col-span-full py-12 text-center bg-white rounded-xl border-2 border-dashed border-gray-300">
+          <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path>
+          </svg>
+          <h3 class="mt-2 text-sm font-medium text-gray-900">No hay sesiones activas</h3>
+          <p class="mt-1 text-sm text-gray-500">Registra un nuevo ingreso para comenzar el control de tiempos.</p>
+        </div>
+      }
+
+    </div>
+  </main>
+</div>

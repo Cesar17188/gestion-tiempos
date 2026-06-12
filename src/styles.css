@@ -1,3 +1,84 @@
-/* You can add global styles to this file, and also import other style files */
+/* Global Styles */
+:root {
+  /* Paleta de colores principal */
+  --color-fondo: #FEE5D2;
+  --color-titulos: #9CAE94;
+  --color-texto-secundario: #EA9996;
+  --color-texto-normal: #8B7D6C;
+  --color-boton: #E59694;
+  --color-boton-texto: #F8C79C;
 
-@import 'tailwindcss';
+  /* Colores de contraste para cuadros y tablas */
+  --color-contraste-1: #C5D2C0;
+  --color-contraste-2: #90A98A;
+  --color-contraste-3: #ABBBA3;
+  --color-contraste-4: #E1AC7A;
+  --color-contraste-5: #F8BEAB;
+  --color-contraste-6: #3A2A17;
+}
+
+html, body {
+  font-family: 'Fredoka', sans-serif;
+  background-color: var(--color-fondo);
+  color: var(--color-texto-normal);
+  margin: 0;
+  padding: 0;
+}
+
+* {
+  font-family: 'Fredoka', sans-serif;
+}
+
+/* Títulos */
+h1, h2, h3, h4, h5, h6 {
+  color: var(--color-titulos);
+}
+
+/* Textos secundarios */
+.text-secondary, small {
+  color: var(--color-texto-secundario);
+}
+
+/* Botones */
+button, .btn {
+  background-color: var(--color-boton);
+  color: var(--color-boton-texto);
+  border: none;
+  border-radius: 0.5rem;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  font-weight: 500;
+  transition: opacity 0.2s;
+}
+
+button:hover, .btn:hover {
+  opacity: 0.9;
+}
+
+/* Tablas y cuadros básicos (Ejemplos usando la paleta de contraste) */
+.box, .card {
+  background-color: var(--color-contraste-1);
+  border-radius: 0.5rem;
+  padding: 1rem;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th {
+  background-color: var(--color-contraste-2);
+  color: #fff; /* Opcional, para mejor contraste */
+  padding: 0.75rem;
+  text-align: left;
+}
+
+td {
+  background-color: var(--color-contraste-1);
+  padding: 0.75rem;
+  border-bottom: 1px solid var(--color-contraste-3);
+  color: var(--color-texto-normal);
+}
+
+/* Para agregar la paleta a Tailwind como configuración en index.html, se puede hacer aparte, pero estas variables ya cubren el CSS tradicional */

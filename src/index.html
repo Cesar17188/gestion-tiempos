@@ -5,7 +5,37 @@
   <title>GestionTiempos</title>
   <base href="/">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@300..700&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            fondo: '#FEE5D2',
+            titulos: '#9CAE94',
+            secundario: '#EA9996',
+            normal: '#8B7D6C',
+            boton: '#E59694',
+            'boton-texto': '#F8C79C',
+            contraste: {
+              1: '#C5D2C0',
+              2: '#90A98A',
+              3: '#ABBBA3',
+              4: '#E1AC7A',
+              5: '#F8BEAB',
+              6: '#3A2A17',
+            }
+          },
+          fontFamily: {
+            sans: ['Fredoka', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
   <link rel="icon" type="image/x-icon" href="favicon.ico">
 </head>
 <body>
