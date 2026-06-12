@@ -1,6 +1,8 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { interval, Subscription } from 'rxjs';
+import { Router } from '@angular/router';
+import { SupabaseService } from '../../../core/services/supabase/supabase';
 
 // Interfaz para tipar los datos de la sesión
 export interface SesionJuego {
@@ -23,6 +25,11 @@ export interface SesionJuego {
 export class Dashboard implements OnInit, OnDestroy {
   sesiones: SesionJuego[] = [];
   private timerSubscription?: Subscription;
+
+  constructor(
+    private router: Router,
+    private supabaseService: SupabaseService
+  ) {}
 
   ngOnInit() {
     this.cargarDatosSimulados();
@@ -120,5 +127,14 @@ export class Dashboard implements OnInit, OnDestroy {
 
     // Abre WhatsApp Web en una nueva pestaña
     window.open(url, '_blank');
+  }
+
+  async cerrarSesion() {
+    try {
+      await this.supabaseService.auth.signOut();
+      this.router.navigate(['/login']);
+    } catch (error) {
+      console.error('Error al cerrar sesión:', error);
+    }
   }
 }
