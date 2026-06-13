@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -15,6 +15,7 @@ export class Login {
   private fb = inject(FormBuilder);
   private supabaseService = inject(SupabaseService);
   private router = inject(Router);
+  private cdr = inject(ChangeDetectorRef);
   // Definición del formulario con validaciones estrictas
   loginForm: FormGroup = this.fb.group({
     email: ['', [Validators.required, Validators.email]],
@@ -24,6 +25,15 @@ export class Login {
   // Estados de la interfaz
   errorMessage: string = '';
   isLoading: boolean = false;
+  recoveryMessage: string = '';
+  isRecovering: boolean = false;
+  showModal: boolean = false;
+  modalMessage: string = '';
+
+  cerrarModal() {
+    this.showModal = false;
+    this.cdr.detectChanges();
+  }
 
   async onSubmit() {
     // Si el formulario tiene errores, no hacemos la petición
@@ -31,22 +41,79 @@ export class Login {
 
     this.isLoading = true;
     this.errorMessage = '';
+    this.recoveryMessage = '';
+    this.showModal = false;
+    this.cdr.detectChanges();
 
     const { email, password } = this.loginForm.value;
+    let timerId: any;
 
-    // Llamada directa a Supabase Auth
-    const { error } = await this.supabaseService.auth.signInWithPassword({
-      email,
-      password
+    try {
+      // Promesa que rechaza después de 10 segundos (tiempo prudencial)
+      const timeoutPromise = new Promise<any>((_, reject) => {
+        timerId = setTimeout(() => {
+          reject(new Error('TIMEOUT'));
+        }, 10000); // 10 segundos
+      });
+
+      // Usamos Promise.race para competir entre la autenticación y el timeout
+      const response = await Promise.race([
+        this.supabaseService.auth.signInWithPassword({ email, password }),
+        timeoutPromise
+      ]);
+
+      clearTimeout(timerId);
+      this.isLoading = false;
+
+      if (response && response.error) {
+        this.modalMessage = 'El usuario no fue encontrado en el sistema o las credenciales son incorrectas.';
+        this.showModal = true;
+      } else {
+        // Si el login es exitoso, redirigimos al dashboard
+        this.router.navigate(['/dashboard']);
+      }
+      this.cdr.detectChanges();
+    } catch (error: any) {
+      clearTimeout(timerId);
+      this.isLoading = false;
+      if (error && error.message === 'TIMEOUT') {
+        this.modalMessage = 'Usuario no encontrado. El tiempo de búsqueda se ha agotado.';
+        this.showModal = true;
+      } else {
+        // Captura errores 400 u otras excepciones lanzadas directamente por el cliente de Supabase
+        this.modalMessage = 'El usuario no fue encontrado en el sistema o las credenciales son incorrectas.';
+        this.showModal = true;
+      }
+      this.cdr.detectChanges();
+    }
+  }
+
+  async recoverPassword() {
+    const emailControl = this.loginForm.get('email');
+    if (emailControl?.invalid) {
+      this.errorMessage = 'Por favor, ingresa un correo electrónico válido para recuperar tu contraseña.';
+      this.cdr.detectChanges();
+      return;
+    }
+
+    this.isRecovering = true;
+    this.errorMessage = '';
+    this.recoveryMessage = '';
+    this.cdr.detectChanges();
+
+    const email = emailControl?.value;
+
+    const { error } = await this.supabaseService.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/login`,
     });
 
-    this.isLoading = false;
+    this.isRecovering = false;
 
     if (error) {
-      this.errorMessage = 'Credenciales incorrectas. Por favor, verifica tu correo y contraseña.';
+      this.errorMessage = 'Error al intentar enviar el correo de recuperación. Inténtalo de nuevo.';
     } else {
-      // Si el login es exitoso, redirigimos al dashboard
-      this.router.navigate(['/dashboard']);
+      this.recoveryMessage = 'Se ha enviado un enlace de recuperación a tu correo electrónico.';
     }
+    this.cdr.detectChanges();
   }
 }
