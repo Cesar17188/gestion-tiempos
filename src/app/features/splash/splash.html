@@ -1,0 +1,26 @@
+<div class="min-h-screen bg-fondo flex flex-col items-center justify-center font-fredoka transition-colors duration-1000">
+
+  <div class="animate-pulse transform hover:scale-105 transition-transform duration-500">
+    <!-- El GIF de ingreso, ahora usando estilos que combinen con bg-fondo y mix-blend-multiply para quitar el fondo blanco -->
+    <img
+      [src]="gifUrl"
+      alt="Cargando Sistema..."
+      class="w-48 h-48 md:w-64 md:h-64 object-contain drop-shadow-2xl mix-blend-multiply"
+    >
+  </div>
+
+  <div class="mt-8 text-center">
+    <!-- Se cambia text-white por text-titulos -->
+    <h1 class="text-titulos text-3xl font-bold tracking-widest">SISTEMA CORE</h1>
+    
+    <!-- Se cambia text-indigo-200 por text-secundario -->
+    <p class="text-secundario mt-2 text-sm uppercase tracking-widest flex items-center justify-center gap-2">
+      <svg class="animate-spin h-4 w-4 text-titulos" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+      </svg>
+      Cargando operaciones...
+    </p>
+  </div>
+
+</div>

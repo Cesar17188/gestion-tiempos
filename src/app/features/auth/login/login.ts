@@ -103,17 +103,43 @@ export class Login {
 
     const email = emailControl?.value;
 
-    const { error } = await this.supabaseService.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/login`,
-    });
+    try {
+      // 1. Verificamos si el correo existe en la tabla "perfiles"
+      const { data: perfil, error: dbError } = await this.supabaseService.db('perfiles')
+        .select('id') // O cualquier otra columna (asumiendo que tiene la columna email)
+        .eq('email', email)
+        .maybeSingle();
 
-    this.isRecovering = false;
+      if (dbError) {
+        console.error('Error de Supabase al consultar la tabla perfiles:', dbError);
+      }
 
-    if (error) {
-      this.errorMessage = 'Error al intentar enviar el correo de recuperación. Inténtalo de nuevo.';
-    } else {
-      this.recoveryMessage = 'Se ha enviado un enlace de recuperación a tu correo electrónico.';
+      // Si no encuentra resultados o hay error, asumimos que no está registrado
+      if (dbError || !perfil) {
+        this.isRecovering = false;
+        this.errorMessage = 'El correo ingresado no está registrado en el sistema.';
+        this.cdr.detectChanges();
+        return;
+      }
+
+      // 2. Si existe, enviamos el correo de recuperación
+      const { error: authError } = await this.supabaseService.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/actualizar-password`,
+      });
+
+      this.isRecovering = false;
+
+      if (authError) {
+        this.errorMessage = 'Error al intentar enviar el correo de recuperación. Inténtalo de nuevo.';
+      } else {
+        this.recoveryMessage = 'Se ha enviado un enlace de recuperación a tu correo electrónico.';
+      }
+
+    } catch (err) {
+      this.isRecovering = false;
+      this.errorMessage = 'Ocurrió un error inesperado al verificar el correo.';
     }
+
     this.cdr.detectChanges();
   }
 }
