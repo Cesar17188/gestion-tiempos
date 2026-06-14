@@ -1,7 +1,8 @@
 import { Component, OnInit, OnDestroy, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router } from '@angular/router';
+import { Router, RouterModule } from '@angular/router';
 import { interval, Subscription } from 'rxjs';
+import { trigger, transition, style, animate } from '@angular/animations';
 import { SupabaseService } from '../../../core/services/supabase/supabase';
 
 // Interfaz para tipar los datos de la sesión
@@ -18,9 +19,25 @@ export interface SesionJuego {
 
 @Component({
   selector: 'app-dashboard',
-  imports: [CommonModule],
+  imports: [CommonModule, RouterModule],
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.css',
+  host: {
+    '[@slideLeftRight]': '',
+    style: 'display: block; width: 100%;'
+  },
+  animations: [
+    trigger('slideLeftRight', [
+      transition(':enter', [
+        style({ transform: 'translateX(-100%)', opacity: 0 }),
+        animate('400ms cubic-bezier(0.25, 1, 0.5, 1)', style({ transform: 'translateX(0)', opacity: 1 }))
+      ]),
+      transition(':leave', [
+        style({ position: 'absolute', top: 0, left: 0, width: '100%', zIndex: -1 }),
+        animate('400ms cubic-bezier(0.25, 1, 0.5, 1)', style({ transform: 'translateX(-100%)', opacity: 0 }))
+      ])
+    ])
+  ]
 })
 export class Dashboard implements OnInit, OnDestroy {
 
