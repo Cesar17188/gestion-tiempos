@@ -1,7 +1,7 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { interval, Subscription } from 'rxjs';
 import { Router } from '@angular/router';
+import { interval, Subscription } from 'rxjs';
 import { SupabaseService } from '../../../core/services/supabase/supabase';
 
 // Interfaz para tipar los datos de la sesión
@@ -23,69 +23,136 @@ export interface SesionJuego {
   styleUrl: './dashboard.css',
 })
 export class Dashboard implements OnInit, OnDestroy {
+
+  // Inyectamos nuestro servicio real y el enrutador
+  private supabaseService = inject(SupabaseService);
+  private router = inject(Router);
+  private cdr = inject(ChangeDetectorRef);
+
   sesiones: SesionJuego[] = [];
+  userGreeting: string = 'Cargando...';
   private timerSubscription?: Subscription;
+  private realtimeChannel: any;
 
-  constructor(
-    private router: Router,
-    private supabaseService: SupabaseService
-  ) {}
-
-  ngOnInit() {
-    this.cargarDatosSimulados();
+  async ngOnInit() {
+    await this.establecerSaludoPorRol();
+    await this.cargarSesionesActivas();
+    this.cdr.detectChanges(); // Forzamos actualización inicial al terminar la carga
     this.iniciarTemporizador();
+    this.suscribirseCambiosEnVivo();
   }
 
   ngOnDestroy() {
     if (this.timerSubscription) {
       this.timerSubscription.unsubscribe();
     }
+    // La forma correcta de apagar el canal en Supabase v2 es directamente desde el cliente:
+    if (this.realtimeChannel) {
+      this.supabaseService.supabase.removeChannel(this.realtimeChannel);
+    }
   }
 
-  // Simulamos datos que vendrían de Supabase
-  cargarDatosSimulados() {
-    const ahora = new Date();
+  // OBTENER ROL DEL USUARIO Y ESTABLECER SALUDO
+  async establecerSaludoPorRol() {
+    try {
+      const { data: { user }, error: authError } = await this.supabaseService.supabase.auth.getUser();
+      if (authError) throw authError;
 
-    const salida1 = new Date(ahora.getTime() + 25 * 60000); // Faltan 25 mins
-    const salida2 = new Date(ahora.getTime() + 4 * 60000);  // Faltan 4 mins
-    const salida3 = new Date(ahora.getTime() - 2 * 60000);  // Pasó hace 2 mins
+      if (user) {
+        const { data: perfil, error: profileError } = await this.supabaseService.supabase
+          .from('perfiles')
+          .select('rol')
+          .eq('id', user.id)
+          .single();
 
-    this.sesiones = [
-      {
-        id: '1',
-        nombreNino: 'Mateo Rodríguez',
-        nombreTutor: 'Laura Sánchez (Mamá)',
-        whatsapp: '593991234567',
-        horaIngreso: new Date(ahora.getTime() - 5 * 60000),
-        horaSalidaEstimada: salida1,
-        minutosRestantes: 0,
-        estadoAlerta: 'normal'
-      },
-      {
-        id: '2',
-        nombreNino: 'Sofía Castro',
-        nombreTutor: 'Carlos Castro (Papá)',
-        whatsapp: '593987654321',
-        horaIngreso: new Date(ahora.getTime() - 26 * 60000),
-        horaSalidaEstimada: salida2,
-        minutosRestantes: 0,
-        estadoAlerta: 'normal'
-      },
-      {
-        id: '3',
-        nombreNino: 'Lucas Mendoza',
-        nombreTutor: 'Elena Ruiz (Tía)',
-        whatsapp: '593999888777',
-        horaIngreso: new Date(ahora.getTime() - 32 * 60000),
-        horaSalidaEstimada: salida3,
-        minutosRestantes: 0,
-        estadoAlerta: 'normal'
+        if (profileError) throw profileError;
+
+        if (perfil) {
+          const rolUsuario = perfil.rol?.toUpperCase();
+          if (rolUsuario === 'ADMINISTRADOR') {
+            this.userGreeting = 'Hola, Administrador';
+          } else if (rolUsuario === 'ENCARGADO') {
+            this.userGreeting = 'Hola, Encargado';
+          } else {
+            this.userGreeting = 'Hola, Usuario';
+          }
+        }
       }
-    ];
-
-    this.actualizarTiempos();
+    } catch (error) {
+      console.error('Error al obtener el perfil del usuario:', error);
+      this.userGreeting = 'Hola';
+    } finally {
+      this.cdr.detectChanges(); // Informamos a Angular que la variable userGreeting ha cambiado
+    }
   }
 
+  // CERRAR SESIÓN
+  async cerrarSesion() {
+    const { error } = await this.supabaseService.auth.signOut();
+    if (error) {
+      console.error('Error al cerrar sesión:', error);
+    } else {
+      this.router.navigate(['/login']);
+    }
+  }
+
+  // 1. CONSULTA REAL A LA BASE DE DATOS
+  async cargarSesionesActivas() {
+    // Usamos la potencia de PostgREST para hacer el JOIN de las 3 tablas
+    const { data, error } = await this.supabaseService.db('sesiones_juego')
+      .select(`
+        id,
+        ingreso_at,
+        salida_estimada_at,
+        ninos (
+          nombres_apellidos,
+          tutores (
+            nombres_apellidos,
+            whatsapp
+          )
+        )
+      `)
+      .eq('estado', 'ACTIVO'); // Solo traemos los que están jugando
+
+    if (error) {
+      console.error('Error al cargar las sesiones:', error);
+      return;
+    }
+
+    // Mapeamos los datos de Supabase a nuestra interfaz visual de Angular
+    if (data) {
+      this.sesiones = data.map((item: any) => ({
+        id: item.id,
+        nombreNino: item.ninos?.nombres_apellidos || 'Desconocido',
+        nombreTutor: item.ninos?.tutores?.nombres_apellidos || 'Desconocido',
+        whatsapp: item.ninos?.tutores?.whatsapp || '',
+        horaIngreso: new Date(item.ingreso_at),
+        horaSalidaEstimada: new Date(item.salida_estimada_at),
+        minutosRestantes: 0,
+        estadoAlerta: 'normal'
+      }));
+
+      this.actualizarTiempos(); // Calculamos el tiempo inmediatamente
+      this.cdr.detectChanges(); // Informamos a Angular sobre el cambio de sesiones
+    }
+  }
+
+  // 2. MAGIA EN TIEMPO REAL (WEBSOCKETS)
+  suscribirseCambiosEnVivo() {
+    this.realtimeChannel = this.supabaseService.supabase.channel('cambios-sesiones')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'sesiones_juego' },
+        (payload) => {
+          console.log('¡Cambio detectado en la base de datos!', payload);
+          // Si hay cualquier cambio (INSERT, UPDATE), recargamos la lista
+          this.cargarSesionesActivas();
+        }
+      )
+      .subscribe();
+  }
+
+  // 3. LA MATEMÁTICA DEL TIEMPO (Se mantiene igual que antes)
   iniciarTemporizador() {
     this.timerSubscription = interval(1000).subscribe(() => {
       this.actualizarTiempos();
@@ -100,7 +167,6 @@ export class Dashboard implements OnInit, OnDestroy {
       const diffMs = salida - ahora;
 
       const diffMins = Math.ceil(diffMs / 60000);
-
       sesion.minutosRestantes = diffMins;
 
       if (diffMins <= 0) {
@@ -113,9 +179,9 @@ export class Dashboard implements OnInit, OnDestroy {
     });
   }
 
+  // 4. GENERADOR DE WHATSAPP
   enviarWhatsApp(sesion: SesionJuego) {
     let mensaje = '';
-
     if (sesion.estadoAlerta === 'expirado') {
       mensaje = `Hola, te informamos que el tiempo de juego de *${sesion.nombreNino}* ha concluido. ¿Deseas extender el paquete? (Opciones de pago: transferencia o efectivo en caja).`;
     } else {
@@ -124,17 +190,6 @@ export class Dashboard implements OnInit, OnDestroy {
 
     const mensajeCodificado = encodeURIComponent(mensaje);
     const url = `https://wa.me/${sesion.whatsapp}?text=${mensajeCodificado}`;
-
-    // Abre WhatsApp Web en una nueva pestaña
     window.open(url, '_blank');
-  }
-
-  async cerrarSesion() {
-    try {
-      await this.supabaseService.auth.signOut();
-      this.router.navigate(['/login']);
-    } catch (error) {
-      console.error('Error al cerrar sesión:', error);
-    }
   }
 }

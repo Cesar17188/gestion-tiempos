@@ -16,10 +16,17 @@
   max-width: 1280px;
   margin: 0 auto;
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
+  flex-direction: column;
+  align-items: stretch;
   gap: 1rem;
+}
+
+@media (min-width: 640px) {
+  .header-content {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+  }
 }
 
 .logo-title {
@@ -51,18 +58,18 @@
   display: flex;
   align-items: center;
   gap: 1rem;
+  justify-content: flex-end;
+}
+
+@media (min-width: 640px) {
+  .user-actions {
+    justify-content: flex-start;
+  }
 }
 
 .user-greeting {
   font-size: 0.875rem;
   color: var(--color-fondo);
-  display: none;
-}
-
-@media (min-width: 768px) {
-  .user-greeting {
-    display: block;
-  }
 }
 
 .btn-logout {
@@ -95,11 +102,18 @@
 /* Toolbar */
 .toolbar {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  flex-direction: column;
+  align-items: stretch;
   margin-bottom: 1.5rem;
-  flex-wrap: wrap;
   gap: 1rem;
+}
+
+@media (min-width: 640px) {
+  .toolbar {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+  }
 }
 
 .toolbar h2 {
@@ -112,10 +126,18 @@
 .btn-new {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 0.5rem;
   background-color: var(--color-titulos);
   color: var(--color-fondo);
   padding: 0.6rem 1.25rem;
+  width: 100%;
+}
+
+@media (min-width: 640px) {
+  .btn-new {
+    width: auto;
+  }
 }
 
 .btn-new:hover {
@@ -181,9 +203,16 @@
 
 .card-header {
   display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
+  flex-direction: column;
   gap: 1rem;
+}
+
+@media (min-width: 480px) {
+  .card-header {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: flex-start;
+  }
 }
 
 .child-info {
@@ -205,11 +234,17 @@
 }
 
 .timer-section {
-  text-align: right;
   display: flex;
   flex-direction: column;
-  align-items: flex-end;
+  align-items: flex-start;
   flex-shrink: 0;
+}
+
+@media (min-width: 480px) {
+  .timer-section {
+    text-align: right;
+    align-items: flex-end;
+  }
 }
 
 .timer {
@@ -258,6 +293,7 @@
   background-color: rgba(255, 255, 255, 0.4);
   border-top: 1px solid var(--color-contraste-3);
   display: flex;
+  flex-wrap: wrap;
   gap: 0.75rem;
 }
 
