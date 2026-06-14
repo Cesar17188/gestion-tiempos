@@ -14,6 +14,7 @@ export interface SesionJuego {
   horaIngreso: Date;
   horaSalidaEstimada: Date;
   minutosRestantes: number;
+  tiempoRestanteStr: string;
   estadoAlerta: 'normal' | 'advertencia' | 'expirado';
 }
 
@@ -146,6 +147,7 @@ export class Dashboard implements OnInit, OnDestroy {
         horaIngreso: new Date(item.ingreso_at),
         horaSalidaEstimada: new Date(item.salida_estimada_at),
         minutosRestantes: 0,
+        tiempoRestanteStr: '00:00',
         estadoAlerta: 'normal'
       }));
 
@@ -183,17 +185,37 @@ export class Dashboard implements OnInit, OnDestroy {
       const salida = sesion.horaSalidaEstimada.getTime();
       const diffMs = salida - ahora;
 
-      const diffMins = Math.ceil(diffMs / 60000);
-      sesion.minutosRestantes = diffMins;
-
-      if (diffMins <= 0) {
+      if (diffMs <= 0) {
+        sesion.minutosRestantes = 0;
+        sesion.tiempoRestanteStr = '00:00';
         sesion.estadoAlerta = 'expirado';
-      } else if (diffMins <= 5) {
-        sesion.estadoAlerta = 'advertencia';
       } else {
-        sesion.estadoAlerta = 'normal';
+        const diffSecs = Math.floor(diffMs / 1000);
+        const totalMins = Math.floor(diffSecs / 60);
+        
+        const horas = Math.floor(totalMins / 60);
+        const mins = totalMins % 60;
+        const secs = diffSecs % 60;
+
+        sesion.minutosRestantes = totalMins;
+
+        // Formato condicional: añade horas solo si es mayor a 59 minutos
+        const hStr = horas > 0 ? `${horas.toString().padStart(2, '0')}:` : '';
+        const mStr = mins.toString().padStart(2, '0');
+        const sStr = secs.toString().padStart(2, '0');
+        
+        sesion.tiempoRestanteStr = `${hStr}${mStr}:${sStr}`;
+
+        // La advertencia debe saltar a los 5 minutos exactos (300 segundos)
+        if (diffSecs <= 300) {
+          sesion.estadoAlerta = 'advertencia';
+        } else {
+          sesion.estadoAlerta = 'normal';
+        }
       }
     });
+
+    this.cdr.detectChanges(); // Forzamos a la UI a refrescar el temporizador cada segundo
   }
 
   // 4. GENERADOR DE WHATSAPP
