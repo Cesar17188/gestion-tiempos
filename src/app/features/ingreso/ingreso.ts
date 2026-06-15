@@ -116,6 +116,9 @@ export class Ingreso {
       const minutosExtra = parseInt(values.tiempoExtraMinutos || '0');
       const totalMinutos = minutosAAgregar + minutosExtra;
       const horaSalidaEstimada = new Date(horaIngreso.getTime() + totalMinutos * 60000);
+      
+      const adultosAdicionales = parseInt(values.adultosExtra || '0');
+      const costoExtraInicial = adultosAdicionales * 0.50;
 
       const { error: sesionError } = await this.supabaseService.db('sesiones_juego')
         .insert({
@@ -123,7 +126,11 @@ export class Ingreso {
           ingreso_at: horaIngreso.toISOString(),
           salida_estimada_at: horaSalidaEstimada.toISOString(),
           estado: 'ACTIVO',
-          minutos_contratados: minutosAAgregar
+          minutos_contratados: minutosAAgregar,
+          adultos_adicionales: adultosAdicionales,
+          costo_base: 30,
+          costo_extra: costoExtraInicial,
+          minutos_extra: 0
         });
 
       if (sesionError) throw new Error(`Error al iniciar sesión: ${sesionError.message}`);

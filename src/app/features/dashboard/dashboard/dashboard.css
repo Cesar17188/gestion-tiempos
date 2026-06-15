@@ -287,6 +287,29 @@
   margin-right: 0.375rem;
 }
 
+.session-cost {
+  margin-top: 1rem;
+  padding: 0.75rem 1rem;
+  background-color: rgba(0, 0, 0, 0.03);
+  border-radius: 0.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-left: 3px solid var(--color-contraste-6);
+}
+
+.session-cost .cost-label {
+  font-weight: 600;
+  color: var(--color-texto-normal);
+  font-size: 0.875rem;
+}
+
+.session-cost .cost-value {
+  font-weight: 800;
+  font-size: 1.25rem;
+  color: var(--color-contraste-6);
+}
+
 /* Card Actions */
 .card-actions {
   padding: 0.75rem 1.25rem;
@@ -330,6 +353,20 @@
 
 .card-actions .btn-checkout:hover {
   background-color: #2a1f11;
+}
+
+.card-actions .btn-add-time {
+  background-color: var(--color-contraste-2);
+  color: #fff;
+  flex: 1;
+}
+
+.card-actions .btn-add-time:hover {
+  background-color: #7b9468;
+}
+
+.card-actions .btn-add-time .icon-small {
+  margin-right: 0.5rem;
 }
 
 /* Status variants */

@@ -16,6 +16,11 @@ export interface SesionJuego {
   minutosRestantes: number;
   tiempoRestanteStr: string;
   estadoAlerta: 'normal' | 'advertencia' | 'expirado';
+  costoBase: number;
+  minutosExtra: number;
+  costoExtra: number;
+  costoTotal: number;
+  adultosAdicionales: number;
 }
 
 @Component({
@@ -122,6 +127,10 @@ export class Dashboard implements OnInit, OnDestroy {
         id,
         ingreso_at,
         salida_estimada_at,
+        costo_base,
+        minutos_extra,
+        costo_extra,
+        adultos_adicionales,
         ninos (
           nombres_apellidos,
           tutores (
@@ -148,7 +157,12 @@ export class Dashboard implements OnInit, OnDestroy {
         horaSalidaEstimada: new Date(item.salida_estimada_at),
         minutosRestantes: 0,
         tiempoRestanteStr: '00:00',
-        estadoAlerta: 'normal'
+        estadoAlerta: 'normal',
+        costoBase: item.costo_base || 30, // Fallback si no está seteado
+        minutosExtra: item.minutos_extra || 0,
+        costoExtra: item.costo_extra || 0,
+        adultosAdicionales: item.adultos_adicionales || 0,
+        costoTotal: (item.costo_base || 30) + (item.costo_extra || 0)
       }));
 
       this.actualizarTiempos(); // Calculamos el tiempo inmediatamente
@@ -230,5 +244,34 @@ export class Dashboard implements OnInit, OnDestroy {
     const mensajeCodificado = encodeURIComponent(mensaje);
     const url = `https://wa.me/${sesion.whatsapp}?text=${mensajeCodificado}`;
     window.open(url, '_blank');
+  }
+
+  // 5. AGREGAR 5 MINUTOS A LA SESIÓN
+  async agregarCincoMinutos(sesion: SesionJuego) {
+    // Calculamos la nueva fecha de salida estimada sumando 5 minutos (5 * 60000 milisegundos)
+    const nuevaSalidaEstimada = new Date(sesion.horaSalidaEstimada.getTime() + 5 * 60000);
+    const nuevosMinutosExtra = sesion.minutosExtra + 5;
+    const nuevoCostoExtra = sesion.costoExtra + 1.50; // Aumentar $1.50 por cada 5 minutos extras
+
+    const { error } = await this.supabaseService.db('sesiones_juego')
+      .update({ 
+        salida_estimada_at: nuevaSalidaEstimada.toISOString(),
+        minutos_extra: nuevosMinutosExtra,
+        costo_extra: nuevoCostoExtra
+      })
+      .eq('id', sesion.id);
+
+    if (error) {
+      console.error('Error al agregar 5 minutos:', error);
+      alert('Hubo un error al intentar agregar 5 minutos. Por favor, intenta de nuevo.');
+    } else {
+      console.log('Se agregaron 5 minutos exitosamente a la sesión.');
+      // Update local state temporarily so UI is instantly updated, real-time sync will overwrite it
+      sesion.horaSalidaEstimada = nuevaSalidaEstimada;
+      sesion.minutosExtra = nuevosMinutosExtra;
+      sesion.costoExtra = nuevoCostoExtra;
+      sesion.costoTotal = sesion.costoBase + sesion.costoExtra;
+      this.actualizarTiempos();
+    }
   }
 }
