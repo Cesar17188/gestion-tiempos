@@ -1,0 +1,56 @@
+<div class="min-h-screen bg-slate-50 py-10 px-4 sm:px-6 lg:px-8">
+  <div class="max-w-xl mx-auto">
+
+    <div class="mb-6 flex items-center justify-between">
+      <h1 class="text-3xl font-extrabold text-gray-900 tracking-tight">Mi Perfil</h1>
+      <button (click)="volver()" class="flex items-center text-sm font-semibold text-gray-600 hover:text-indigo-600 bg-white px-4 py-2 rounded-xl shadow-sm border border-gray-200 transition-colors">
+        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+        Volver al Dashboard
+      </button>
+    </div>
+
+    @if (isLoading) {
+      <div class="flex justify-center items-center py-20">
+        <svg class="animate-spin h-8 w-8 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+      </div>
+    } @else {
+      <div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+
+        <div class="h-32 bg-indigo-600 w-full relative">
+          <div class="absolute -bottom-12 left-8">
+            <div class="h-24 w-24 bg-white rounded-full p-1.5 shadow-lg">
+              <div class="h-full w-full bg-indigo-100 rounded-full flex items-center justify-center text-indigo-600">
+                <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="pt-16 px-8 pb-8">
+          <div class="flex justify-between items-start">
+            <div>
+              <h2 class="text-2xl font-bold text-gray-900">{{ datosPerfil?.nombre || 'Usuario' }}</h2>
+              <p class="text-gray-500 font-medium">{{ authUsuario?.email }}</p>
+            </div>
+
+            <span class="px-3 py-1 text-xs font-bold rounded-full uppercase tracking-widest"
+                  [ngClass]="{
+                    'bg-purple-100 text-purple-700': datosPerfil?.rol === 'ADMINISTRADOR',
+                    'bg-blue-100 text-blue-700': datosPerfil?.rol === 'ENCARGADO' || !datosPerfil?.rol
+                  }">
+              {{ datosPerfil?.rol || 'ENCARGADO' }}
+            </span>
+          </div>
+
+          <div class="mt-8 border-t border-gray-100 pt-8 flex flex-col space-y-4">
+            <button (click)="cerrarSesion()" class="w-full flex justify-center items-center py-3.5 px-4 border border-red-200 rounded-xl shadow-sm text-sm font-bold text-red-600 bg-red-50 hover:bg-red-100 transition-colors">
+              <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+              Cerrar Sesión
+            </button>
+          </div>
+        </div>
+
+      </div>
+    }
+  </div>
+</div>

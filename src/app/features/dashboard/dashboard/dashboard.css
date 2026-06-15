@@ -72,6 +72,28 @@
   color: var(--color-fondo);
 }
 
+.profile-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-fondo);
+  background-color: rgba(255, 255, 255, 0.1);
+  padding: 0.5rem;
+  border-radius: 50%;
+  transition: background-color 0.2s ease, transform 0.2s ease;
+  text-decoration: none;
+}
+
+.profile-link:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+  transform: scale(1.05);
+}
+
+.icon-profile {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
 .btn-logout {
   background-color: var(--color-contraste-6);
   color: var(--color-fondo);
