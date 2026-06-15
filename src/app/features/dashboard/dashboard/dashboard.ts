@@ -54,6 +54,8 @@ export class Dashboard implements OnInit, OnDestroy {
 
   sesiones: SesionJuego[] = [];
   userGreeting: string = 'Cargando...';
+  userName: string = '';
+  avatarUrl: string | null = null;
   private timerSubscription?: Subscription;
   private realtimeChannel: any;
 
@@ -84,14 +86,16 @@ export class Dashboard implements OnInit, OnDestroy {
       if (user) {
         const { data: perfil, error: profileError } = await this.supabaseService.supabase
           .from('perfiles')
-          .select('rol')
-          .eq('id', user.id)
+          .select('rol, nombre, avatar_url')
+          .eq('email', user.email)
           .single();
 
         if (profileError) throw profileError;
 
         if (perfil) {
           const rolUsuario = perfil.rol?.toUpperCase();
+          this.userName = perfil.nombre || '';
+          this.avatarUrl = perfil.avatar_url || null;
           if (rolUsuario === 'ADMINISTRADOR') {
             this.userGreeting = 'Hola, Administrador';
           } else if (rolUsuario === 'ENCARGADO') {
