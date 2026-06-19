@@ -100,7 +100,7 @@
         </div>
 
         <div formArrayName="ninos" class="space-y-6">
-          @for (ninoCtrl of ninosFormArray.controls; track i; let i = $index) {
+          @for (ninoCtrl of ninosFormArray.controls; track ninoCtrl; let i = $index) {
             <div [formGroupName]="i" class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 space-y-5 relative">
 
               @if (ninosFormArray.length > 1) {
@@ -177,26 +177,17 @@
                     class="mt-2 block w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm">
               <option value="30">30 Minutos (Media hora)</option>
               <option value="60">60 Minutos (1 Hora)</option>
-              <option value="90">90 Minutos (1 Hora y media)</option>
-              <option value="120">120 Minutos (2 Horas)</option>
-              <option value="180">180 Minutos (3 Horas)</option>
             </select>
           </div>
 
-          <div class="md:col-span-1">
-            <label class="block text-sm font-semibold text-gray-700">Tiempo Extra (Minutos)</label>
-            <input type="number" formControlName="tiempoExtraMinutos" min="0" max="25" step="5"
-                   class="mt-2 block w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
-                   placeholder="Ej. 10">
-            <p class="mt-1.5 text-xs text-gray-400">Hasta 25 minutos extra.</p>
-          </div>
+
 
           <div class="md:col-span-1">
             <label class="block text-sm font-semibold text-gray-700">Adultos Extra</label>
             <input type="number" formControlName="adultosExtra" min="0"
                    class="mt-2 block w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
                    placeholder="Ej. 1">
-            <p class="mt-1.5 text-xs text-gray-400">Si hay más de 2 adultos.</p>
+            <p class="mt-1.5 text-xs text-gray-400">Si hay más de 2 adultos. (Costo: $2 por cada adulto extra).</p>
           </div>
         </div>
 

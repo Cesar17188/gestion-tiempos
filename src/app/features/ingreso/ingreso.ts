@@ -54,7 +54,6 @@ export class Ingreso {
 
     // Configuración de la Sesión (Aplica a todos los niños del formulario)
     tiempoMinutos: ['30', [Validators.required]], // Por defecto 30 minutos
-    tiempoExtraMinutos: ['0', [Validators.min(0), Validators.max(25)]],
     adultosExtra: ['0', [Validators.min(0)]]
   });
 
@@ -129,20 +128,32 @@ export class Ingreso {
           .order('id', { ascending: true });
 
         if (ninosData && ninosData.length > 0 && !ninosError) {
+          console.log('Niños encontrados:', ninosData);
           this.ninosFormArray.clear();
           ninosData.forEach((nino) => {
             const ninoGroup = this.crearNinoFormGroup();
+            
+            // Formatear la fecha a YYYY-MM-DD para el input type="date"
+            let fechaParsed = '';
+            if (nino.fecha_nacimiento) {
+              fechaParsed = nino.fecha_nacimiento.split('T')[0];
+            }
+
             ninoGroup.patchValue({
               ninoNombre: nino.nombres_apellidos || '',
               ninoAlias: nino.alias || '',
-              ninoFechaNacimiento: nino.fecha_nacimiento || '',
+              ninoFechaNacimiento: fechaParsed,
+              ninoCodigo: nino.codigo_especifico || ninoGroup.get('ninoCodigo')?.value,
               ninoNotas: nino.notas || ''
             });
             this.ninosFormArray.push(ninoGroup);
           });
+          this.cdr.detectChanges();
+          this.searchMessage = `Datos cargados exitosamente. Se encontraron ${ninosData.length} niño(s).`;
+        } else {
+          console.log('No se encontraron niños o hubo un error:', ninosError);
+          this.searchMessage = 'Tutor encontrado exitosamente, pero no tiene niños registrados aún.';
         }
-
-        this.searchMessage = 'Datos cargados exitosamente.';
       } else {
         this.searchMessage = 'No se encontró un tutor con esa cédula.';
       }
@@ -236,12 +247,12 @@ export class Ingreso {
         // 3. PASO TRES: Calcular tiempos y abrir la sesión de juego para ESTE niño
         const horaIngreso = new Date();
         const minutosAAgregar = parseInt(values.tiempoMinutos || '30');
-        const minutosExtra = parseInt(values.tiempoExtraMinutos || '0');
-        const totalMinutos = minutosAAgregar + minutosExtra;
+        const totalMinutos = minutosAAgregar;
         const horaSalidaEstimada = new Date(horaIngreso.getTime() + totalMinutos * 60000);
         
         const adultosAdicionales = parseInt(values.adultosExtra || '0');
-        const costoExtraInicial = adultosAdicionales * 0.50;
+        const costoExtraInicial = adultosAdicionales * 2.00;
+        const costoBase = minutosAAgregar === 60 ? 10 : 6;
 
         const { error: sesionError } = await this.supabaseService.db('sesiones_juego')
           .insert({
@@ -251,7 +262,7 @@ export class Ingreso {
             estado: 'ACTIVO',
             minutos_contratados: minutosAAgregar,
             adultos_adicionales: adultosAdicionales,
-            costo_base: 30, // Aquí puedes ajustar el precio base
+            costo_base: costoBase,
             costo_extra: costoExtraInicial,
             minutos_extra: 0
           });

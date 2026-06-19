@@ -21,6 +21,7 @@ export interface SesionJuego {
   costoExtra: number;
   costoTotal: number;
   adultosAdicionales: number;
+  extensionAplicada: boolean;
 }
 
 @Component({
@@ -166,6 +167,7 @@ export class Dashboard implements OnInit, OnDestroy {
         minutosExtra: item.minutos_extra || 0,
         costoExtra: item.costo_extra || 0,
         adultosAdicionales: item.adultos_adicionales || 0,
+        extensionAplicada: (item.minutos_extra || 0) > 0,
         costoTotal: (item.costo_base || 30) + (item.costo_extra || 0)
       }));
 
@@ -250,12 +252,17 @@ export class Dashboard implements OnInit, OnDestroy {
     window.open(url, '_blank');
   }
 
-  // 5. AGREGAR 5 MINUTOS A LA SESIÓN
-  async agregarCincoMinutos(sesion: SesionJuego) {
-    // Calculamos la nueva fecha de salida estimada sumando 5 minutos (5 * 60000 milisegundos)
-    const nuevaSalidaEstimada = new Date(sesion.horaSalidaEstimada.getTime() + 5 * 60000);
-    const nuevosMinutosExtra = sesion.minutosExtra + 5;
-    const nuevoCostoExtra = sesion.costoExtra + 1.50; // Aumentar $1.50 por cada 5 minutos extras
+  // 5. AGREGAR 30 MINUTOS A LA SESIÓN
+  async agregarMediaHora(sesion: SesionJuego) {
+    if (sesion.extensionAplicada) {
+      alert('Ya se ha agregado tiempo extra a esta sesión. Solo se permite una vez.');
+      return;
+    }
+
+    // Calculamos la nueva fecha de salida estimada sumando 30 minutos (30 * 60000 milisegundos)
+    const nuevaSalidaEstimada = new Date(sesion.horaSalidaEstimada.getTime() + 30 * 60000);
+    const nuevosMinutosExtra = sesion.minutosExtra + 30;
+    const nuevoCostoExtra = sesion.costoExtra + 4; // Agrega $4 para que de $6 pase a $10
 
     const { error } = await this.supabaseService.db('sesiones_juego')
       .update({ 
@@ -266,15 +273,16 @@ export class Dashboard implements OnInit, OnDestroy {
       .eq('id', sesion.id);
 
     if (error) {
-      console.error('Error al agregar 5 minutos:', error);
-      alert('Hubo un error al intentar agregar 5 minutos. Por favor, intenta de nuevo.');
+      console.error('Error al agregar 30 minutos:', error);
+      alert('Hubo un error al intentar agregar 30 minutos. Por favor, intenta de nuevo.');
     } else {
-      console.log('Se agregaron 5 minutos exitosamente a la sesión.');
+      console.log('Se agregaron 30 minutos exitosamente a la sesión.');
       // Update local state temporarily so UI is instantly updated, real-time sync will overwrite it
       sesion.horaSalidaEstimada = nuevaSalidaEstimada;
       sesion.minutosExtra = nuevosMinutosExtra;
       sesion.costoExtra = nuevoCostoExtra;
       sesion.costoTotal = sesion.costoBase + sesion.costoExtra;
+      sesion.extensionAplicada = true;
       this.actualizarTiempos();
     }
   }

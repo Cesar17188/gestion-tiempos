@@ -98,11 +98,11 @@
               </svg>
               Avisar
             </button>
-            <button (click)="agregarCincoMinutos(sesion)" class="btn btn-add-time" title="Agregar 5 minutos extras">
+            <button (click)="agregarMediaHora(sesion)" class="btn btn-add-time" title="Agregar 30 minutos extras" [disabled]="sesion.extensionAplicada" [ngStyle]="{'opacity': sesion.extensionAplicada ? '0.5' : '1', 'cursor': sesion.extensionAplicada ? 'not-allowed' : 'pointer'}">
               <svg class="icon-small" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
               </svg>
-              +5 min
+              +30 min
             </button>
             <button class="btn btn-checkout" title="Finalizar Sesión">
               Retirar
