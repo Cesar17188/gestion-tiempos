@@ -47,6 +47,8 @@ export interface SesionJuego {
   ]
 })
 export class Dashboard implements OnInit, OnDestroy {
+  // VARIABLE PARA SABER SI EL USUARIO ES ADMINISTRADOR
+  esAdmin: boolean = false;
 
   // Inyectamos nuestro servicio real y el enrutador
   private supabaseService = inject(SupabaseService);
@@ -61,6 +63,7 @@ export class Dashboard implements OnInit, OnDestroy {
   private realtimeChannel: any;
 
   async ngOnInit() {
+    await this.verificarPermisos(); // <-- Agregamos esta línea al inicio
     await this.establecerSaludoPorRol();
     await this.cargarSesionesActivas();
     this.cdr.detectChanges(); // Forzamos actualización inicial al terminar la carga
@@ -212,7 +215,7 @@ export class Dashboard implements OnInit, OnDestroy {
       } else {
         const diffSecs = Math.floor(diffMs / 1000);
         const totalMins = Math.floor(diffSecs / 60);
-        
+
         const horas = Math.floor(totalMins / 60);
         const mins = totalMins % 60;
         const secs = diffSecs % 60;
@@ -223,7 +226,7 @@ export class Dashboard implements OnInit, OnDestroy {
         const hStr = horas > 0 ? `${horas.toString().padStart(2, '0')}:` : '';
         const mStr = mins.toString().padStart(2, '0');
         const sStr = secs.toString().padStart(2, '0');
-        
+
         sesion.tiempoRestanteStr = `${hStr}${mStr}:${sStr}`;
 
         // La advertencia debe saltar a los 5 minutos exactos (300 segundos)
@@ -265,7 +268,7 @@ export class Dashboard implements OnInit, OnDestroy {
     const nuevoCostoExtra = sesion.costoExtra + 4; // Agrega $4 para que de $6 pase a $10
 
     const { error } = await this.supabaseService.db('sesiones_juego')
-      .update({ 
+      .update({
         salida_estimada_at: nuevaSalidaEstimada.toISOString(),
         minutos_extra: nuevosMinutosExtra,
         costo_extra: nuevoCostoExtra
@@ -284,6 +287,20 @@ export class Dashboard implements OnInit, OnDestroy {
       sesion.costoTotal = sesion.costoBase + sesion.costoExtra;
       sesion.extensionAplicada = true;
       this.actualizarTiempos();
+    }
+  }
+  // 3. FUNCIÓN PARA VERIFICAR SI EL USUARIO ES ADMINISTRADOR
+  async verificarPermisos() {
+    const { data: { user } } = await this.supabaseService.auth.getUser();
+    if (user) {
+      const { data } = await this.supabaseService.db('perfiles')
+        .select('rol')
+        .eq('id', user.id)
+        .single();
+
+      if (data && data.rol === 'ADMINISTRADOR') {
+        this.esAdmin = true;
+      }
     }
   }
 }

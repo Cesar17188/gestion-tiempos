@@ -1,0 +1,28 @@
+<div class="card filtros-card">
+  <div class="filtro-grupo">
+    <label>Desde</label>
+    <input type="date" [(ngModel)]="fechaInicio" class="filtro-input">
+  </div>
+  
+  <div class="filtro-grupo">
+    <label>Hasta</label>
+    <input type="date" [(ngModel)]="fechaFin" class="filtro-input">
+  </div>
+
+  <div class="filtro-grupo flex-grow">
+    <label>Filtrar por Personal</label>
+    <select [(ngModel)]="encargadoSeleccionado" class="filtro-input">
+      <option value="TODOS">Todos los colaboradores</option>
+      @for (encargado of listaPersonal; track encargado.id) {
+        <option [value]="encargado.id">{{ encargado.nombre }} ({{ encargado.rol }})</option>
+      }
+    </select>
+  </div>
+
+  <button (click)="aplicar()" class="btn btn-aplicar">
+    <svg class="icon-small" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+    </svg>
+    Buscar
+  </button>
+</div>

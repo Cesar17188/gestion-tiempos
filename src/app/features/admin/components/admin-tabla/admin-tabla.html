@@ -1,0 +1,41 @@
+<div class="card tabla-card">
+  <div class="tabla-header">
+    <h3>Rendimiento del Personal</h3>
+  </div>
+  <div class="tabla-container">
+    <table>
+      <thead>
+        <tr>
+          <th>Encargado</th>
+          <th class="text-center">Niños Registrados</th>
+          <th class="text-center">Recaudación</th>
+          <th>Primer Ingreso</th>
+          <th>Última Salida</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (empleado of metricas; track empleado.nombre) {
+        <tr>
+          <td class="empleado-cell">
+            <div class="avatar-circle">
+              {{ empleado.nombre.charAt(0) }}
+            </div>
+            <strong>{{ empleado.nombre }}</strong>
+          </td>
+          <td class="text-center font-medium">{{ empleado.ninosIngresados }}</td>
+          <td class="text-center font-bold text-success">${{ empleado.recaudado | number:'1.2-2' }}</td>
+          <td>{{ empleado.primeraSesion | date:'shortTime' }}</td>
+          <td>{{ empleado.ultimaSesion | date:'shortTime' }}</td>
+        </tr>
+        }
+        @if (metricas.length === 0) {
+        <tr>
+          <td colspan="5" class="empty-row">
+            No hay registros en este rango de fechas.
+          </td>
+        </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</div>

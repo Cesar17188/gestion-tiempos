@@ -1,0 +1,140 @@
+<div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 mb-8">
+
+    <div class="flex flex-col md:flex-row items-end justify-between gap-4 mb-6 border-b border-gray-50 pb-5">
+        <div>
+            <h3 class="text-lg font-bold text-gray-800">Análisis de Frecuencia y Fidelidad de Niños</h3>
+            <p class="text-xs text-gray-500 mt-0.5">Listado de asistencia recurrente y horas acumuladas en sala</p>
+        </div>
+
+        <div class="flex flex-wrap items-end gap-3 w-full md:w-auto">
+            <div>
+                <label class="block text-xxs font-bold text-gray-400 uppercase tracking-wider mb-1.5">Desde</label>
+                <input type="date" [(ngModel)]="fechaInicio" (change)="cargarHistorialNinos()"
+                    class="px-3 py-2 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+            </div>
+            <div>
+                <label class="block text-xxs font-bold text-gray-400 uppercase tracking-wider mb-1.5">Hasta</label>
+                <input type="date" [(ngModel)]="fechaFin" (change)="cargarHistorialNinos()"
+                    class="px-3 py-2 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+            </div>
+        </div>
+    </div>
+
+    <!-- Tarjetas informativas de resumen -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
+        <!-- Tarjeta de Total Niños Registrados -->
+        <div class="bg-indigo-50/50 border border-indigo-100 rounded-2xl p-5 flex items-center gap-4">
+            <div class="bg-indigo-100 text-indigo-600 p-3.5 rounded-xl">
+                <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5"></path>
+                </svg>
+            </div>
+            <div>
+                <p class="text-xs font-bold text-indigo-400 uppercase tracking-wider mb-1">Niños Registrados</p>
+                <h3 class="text-2xl font-black text-indigo-900 leading-none">{{ totalNinosFiltro }}</h3>
+            </div>
+        </div>
+
+        <!-- Tarjeta de Día General Más Visitado -->
+        <div class="bg-amber-50/50 border border-amber-100 rounded-2xl p-5 flex items-center gap-4">
+            <div class="bg-amber-100 text-amber-600 p-3.5 rounded-xl">
+                <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                </svg>
+            </div>
+            <div>
+                <p class="text-xs font-bold text-amber-500 uppercase tracking-wider mb-1">Día más visitado</p>
+                <h3 class="text-2xl font-black text-amber-900 leading-none capitalize">{{ diaGeneralMasVisitado }}</h3>
+            </div>
+        </div>
+    </div>
+    @if (isLoading) {
+    <div class="flex justify-center items-center py-12">
+        <svg class="animate-spin h-8 w-8 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none"
+            viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+            </path>
+        </svg>
+    </div>
+    } @else {
+
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm text-left text-gray-500">
+            <thead class="text-xs text-gray-700 uppercase bg-slate-50 border-b border-gray-100">
+                <tr>
+                    <th scope="col" class="px-6 py-4 font-semibold">Niño / Niña</th>
+                    <th scope="col" class="px-6 py-4 font-semibold text-center">Frecuencia (Visitas)</th>
+                    <th scope="col" class="px-6 py-4 font-semibold text-center">Día Frecuente</th>
+                    <th scope="col" class="px-6 py-4 font-semibold text-center">Total Horas Registradas</th>
+                    <th scope="col" class="px-6 py-4 text-right">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                @for (nino of reporteNinos | slice:0:limiteMostrar; track nino.ninoId) {
+                <tr class="bg-white border-b hover:bg-slate-50/50 transition-colors">
+                    <td class="px-6 py-4 font-bold text-gray-900">
+                        {{ nino.nombreNino }}
+                    </td>
+                    <td class="px-6 py-4 text-center font-semibold text-indigo-600">
+                        {{ nino.totalVisitas }} {{ nino.totalVisitas === 1 ? 'vez' : 'veces' }}
+                    </td>
+                    <td class="px-6 py-4 text-center font-medium text-gray-500 capitalize">
+                        {{ nino.diaFrecuente }}
+                    </td>
+                    <td class="px-6 py-4 text-center font-medium text-gray-700">
+                        {{ nino.totalHorasAcumuladas | number:'1.1-1' }} hrs
+                    </td>
+                    <td class="px-6 py-4 text-right">
+                        <button (click)="toggleDetalle(nino)"
+                            class="text-xs font-bold text-indigo-600 hover:text-indigo-800 bg-indigo-50 px-3 py-1.5 rounded-lg transition-colors">
+                            {{ nino.mostrarDetalle ? 'Ocultar historial' : 'Ver días y tiempos' }}
+                        </button>
+                    </td>
+                </tr>
+
+                @if (nino.mostrarDetalle) {
+                <tr class="bg-slate-50/80">
+                    <td colspan="5" class="px-8 py-4">
+                        <div class="bg-white rounded-xl border border-slate-100 p-4 shadow-inner">
+                            <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2.5">Desglose de
+                                visitas en el periodo:</p>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                                @for (visita of nino.historialVisitas; track $index) {
+                                <div
+                                    class="flex justify-between items-center bg-slate-50 p-2.5 rounded-lg border border-slate-100 text-xs">
+                                    <span class="font-medium text-gray-600">{{ visita.fecha }}</span>
+                                    <span
+                                        class="font-bold text-slate-800 bg-white px-2 py-0.5 rounded border border-slate-100">
+                                        {{ visita.duracionMinutos }} min
+                                    </span>
+                                </div>
+                                }
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+                }
+                }
+                @if (reporteNinos.length === 0) {
+                <tr>
+                    <td colspan="5" class="px-6 py-8 text-center text-gray-400">No se encontraron registros de niños en
+                        el rango de fechas seleccionado.</td>
+                </tr>
+                }
+            </tbody>
+        </table>
+
+        @if (reporteNinos.length > limiteMostrar) {
+        <div class="flex justify-center p-6 border-t border-gray-100 bg-slate-50/30">
+            <button (click)="cargarMas()"
+                class="px-5 py-2.5 text-sm font-bold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 hover:text-indigo-800 rounded-xl transition-colors shadow-sm">
+                Mostrar más registros ({{ limiteMostrar }} de {{ reporteNinos.length }})
+            </button>
+        </div>
+        }
+    </div>
+    }
+
+</div>

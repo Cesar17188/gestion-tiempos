@@ -1,0 +1,80 @@
+.metricas-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+@media (min-width: 640px) {
+  .metricas-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .metricas-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.metrica-card {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+.metrica-icon {
+  width: 3.5rem;
+  height: 3.5rem;
+  border-radius: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-fondo);
+}
+
+.icon-medium {
+  width: 2rem;
+  height: 2rem;
+}
+
+.icon-recaudacion { background-color: var(--color-contraste-2); }
+.icon-ninos { background-color: var(--color-titulos); }
+.icon-minutos { background-color: var(--color-contraste-4); }
+.icon-pico { background-color: var(--color-boton); }
+
+.metrica-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.metrica-info p {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--color-texto-normal);
+}
+
+.metrica-info h3 {
+  margin: 0;
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: var(--color-contraste-6);
+  line-height: 1.2;
+}
+
+.metrica-info h3 span {
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--color-texto-secundario);
+}
+
+.pico-fecha {
+  font-size: 1.25rem !important;
+}
+
+.pico-cantidad {
+  font-size: 0.875rem;
+  color: var(--color-texto-secundario);
+}

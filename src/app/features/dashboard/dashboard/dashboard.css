@@ -123,6 +123,21 @@
   background-color: #2a1f11;
 }
 
+.btn-admin {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background-color: var(--color-contraste-4);
+  color: var(--color-contraste-6);
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+.btn-admin:hover {
+  background-color: #d6985c;
+}
 /* Main Content */
 .dashboard-main {
   max-width: 1280px;

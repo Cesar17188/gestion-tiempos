@@ -13,6 +13,12 @@ export class SupabaseService {
     this.supabase = createClient(environment.supabaseUrl, environment.supabaseKey);
   }
 
+  // --- NUEVO: Agregamos el método 'from' directamente al servicio ---
+  // Esto resuelve el error de TypeScript y respeta el estándar de Supabase
+  from(table: string) {
+    return this.supabase.from(table);
+  }
+
   // 2. Mantenemos el helper de Autenticación (usado en el Login)
   get auth() {
     return this.supabase.auth;

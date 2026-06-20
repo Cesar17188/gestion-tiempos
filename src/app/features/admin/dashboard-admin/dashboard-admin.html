@@ -1,0 +1,73 @@
+<div class="dashboard-container">
+    <header class="dashboard-header">
+        <div class="header-content">
+            <div class="logo-title">
+                <svg class="icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z">
+                    </path>
+                </svg>
+                <h1>Inteligencia de Negocios</h1>
+            </div>
+            <div class="user-actions">
+                <button routerLink="/dashboard" class="btn btn-new">
+                    Volver a Operaciones
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <div class="min-h-screen bg-slate-50 py-8 px-4 sm:px-6 lg:px-8">
+        <div class="max-w-7xl mx-auto">
+
+            <div class="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div>
+                    <h1 class="text-3xl font-extrabold text-gray-900 tracking-tight">Inteligencia de Negocios</h1>
+                    <p class="text-sm text-indigo-600 font-bold uppercase tracking-wider mt-1">Panel de Administración
+                    </p>
+                </div>
+            </div>
+
+            <div class="flex border-b border-gray-200 mb-6 gap-2">
+                <button (click)="pestanaActiva = 'general'"
+                    [ngClass]="{'border-indigo-600 text-indigo-600 font-bold': pestanaActiva === 'general', 'border-transparent text-gray-500 hover:text-gray-700': pestanaActiva !== 'general'}"
+                    class="py-2.5 px-4 border-b-2 text-sm font-medium transition-all">
+                    Resumen General y Personal
+                </button>
+                <button (click)="pestanaActiva = 'ninos'"
+                    [ngClass]="{'border-indigo-600 text-indigo-600 font-bold': pestanaActiva === 'ninos', 'border-transparent text-gray-500 hover:text-gray-700': pestanaActiva !== 'ninos'}"
+                    class="py-2.5 px-4 border-b-2 text-sm font-medium transition-all">
+                    Fidelidad y Frecuencia de Niños
+                </button>
+            </div>
+
+            @if (pestanaActiva === 'general') {
+
+            <app-admin-filtros [listaPersonal]="listaEncargados" [fechaInicio]="fechaInicio" [fechaFin]="fechaFin"
+                [encargadoSeleccionado]="encargadoFiltro" (onFiltrar)="actualizarFiltros($event)">
+            </app-admin-filtros>
+
+            @if (isLoading) {
+            <div class="flex justify-center items-center py-20">
+                <svg class="animate-spin h-10 w-10 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none"
+                    viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                </svg>
+            </div>
+            } @else {
+            <app-admin-metricas [totalRecaudado]="totalRecaudado" [totalNinos]="totalNinos"
+                [totalMinutosJugados]="totalMinutosJugados" [diaPico]="diaMasConcurrido">
+            </app-admin-metricas>
+
+            <app-admin-tabla [metricas]="metricasEncargados"></app-admin-tabla>
+            }
+
+            } @else {
+
+            <app-admin-ninos></app-admin-ninos>
+
+            }
+
+        </div>
+    </div>
+</div>
