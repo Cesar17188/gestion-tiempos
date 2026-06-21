@@ -1,59 +1,78 @@
-# GestionTiempos
+# ⏳ Gestión de Tiempos
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 21.2.15.
+Una aplicación web moderna para la gestión y seguimiento del tiempo. Diseñada para proporcionar a los usuarios una herramienta eficiente donde puedan registrar sus ingresos y tiempos de forma rápida, y a los administradores una visión global del uso a través de paneles de control.
 
-## Development server
+## ✨ Características Principales
 
-To start a local development server, run:
+- **Autenticación Segura:** Sistema de login y recuperación de contraseñas impulsado por Supabase.
+- **Roles de Usuario:** Diferenciación entre usuarios regulares y administradores con paneles dedicados.
+- **Gestión de Registros (Ingresos):** Interfaz para añadir y visualizar tiempos o ingresos registrados.
+- **Panel de Administración (Dashboard Admin):** Vistas analíticas y de control para la administración (cargado de forma diferida o *Lazy Loaded*).
+- **Perfil de Usuario:** Sección dedicada para que los usuarios configuren y actualicen sus datos.
+- **Server-Side Rendering (SSR):** Optimizado para SEO y cargas iniciales rápidas mediante Angular SSR con Express.
 
-```bash
-ng serve
+## 🛠️ Stack Tecnológico
+
+- **Frontend:** Angular 21 (Componentes Standalone)
+- **Estilos:** Tailwind CSS v4 (con PostCSS) y Angular Animations
+- **Backend & Base de Datos:** Supabase
+- **SSR (Server-Side Rendering):** Angular Universal / Express
+- **Testing:** Vitest
+
+## 📋 Requisitos Previos
+
+Asegúrate de tener instalado en tu entorno local:
+- [Node.js](https://nodejs.org/) (Versión 20 o superior recomendada)
+- [npm](https://www.npmjs.com/) (Instalado con Node.js)
+
+## 🚀 Instalación y Ejecución Local
+
+1. **Clona el repositorio:**
+   ```bash
+   git clone <url-del-repositorio>
+   cd gestion-tiempos
+   ```
+
+2. **Instala las dependencias:**
+   ```bash
+   npm install
+   ```
+
+3. **Configura las variables de entorno:**
+   Configura tus credenciales de Supabase en los archivos `src/environments/environment.ts` (asegúrate de que existan).
+
+4. **Inicia el servidor de desarrollo:**
+   ```bash
+   npm start
+   ```
+   Abre tu navegador y navega a `http://localhost:4200/`.
+
+## 📂 Estructura del Proyecto
+
+El proyecto está diseñado bajo una arquitectura orientada a características (*Feature-driven*):
+
+```
+src/
+└── app/
+    ├── core/          # Lógica central: Guards (auth, admin) y Servicios (Supabase)
+    ├── features/      # Módulos de la aplicación
+    │   ├── admin/     # Panel de administración
+    │   ├── auth/      # Flujos de autenticación
+    │   ├── dashboard/ # Panel principal de usuario
+    │   ├── ingreso/   # Registro de tiempos
+    │   ├── perfil/    # Perfil del usuario
+    │   └── splash/    # Pantalla de carga
+    ├── app.routes.ts  # Configuración de enrutamiento y Lazy Loading
+    └── ...
 ```
 
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
+## 📜 Comandos Disponibles
 
-## Code scaffolding
+- `npm start` - Inicia el entorno de desarrollo local (`ng serve`).
+- `npm run build` - Construye la aplicación para producción en el directorio `dist/`.
+- `npm run serve:ssr:gestion-tiempos` - Inicia el servidor Node.js compilado con Server-Side Rendering.
+- `npm test` - Ejecuta los tests unitarios utilizando Vitest.
 
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
+## 🤖 Agentes de IA
 
-```bash
-ng generate component component-name
-```
-
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
-
-```bash
-ng generate --help
-```
-
-## Building
-
-To build the project run:
-
-```bash
-ng build
-```
-
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
-
-## Running unit tests
-
-To execute unit tests with the [Vitest](https://vitest.dev/) test runner, use the following command:
-
-```bash
-ng test
-```
-
-## Running end-to-end tests
-
-For end-to-end (e2e) testing, run:
-
-```bash
-ng e2e
-```
-
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
-
-## Additional Resources
-
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+Si estás utilizando asistentes de código basados en IA (como Copilot o Cursor), consulta el archivo [`agents.md`](./agents.md) en la raíz del proyecto para conocer las reglas de arquitectura y convenciones de código.
