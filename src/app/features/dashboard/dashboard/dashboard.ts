@@ -10,6 +10,7 @@ export interface SesionJuego {
   id: string;
   nombreNino: string;
   nombreTutor: string;
+  parentescoTutor: string;
   whatsapp: string;
   horaIngreso: Date;
   horaSalidaEstimada: Date;
@@ -22,6 +23,7 @@ export interface SesionJuego {
   costoTotal: number;
   adultosAdicionales: number;
   extensionAplicada: boolean;
+  progresoColor?: string;
 }
 
 @Component({
@@ -143,7 +145,8 @@ export class Dashboard implements OnInit, OnDestroy {
           nombres_apellidos,
           tutores (
             nombres_apellidos,
-            whatsapp
+            whatsapp,
+            parentesco
           )
         )
       `)
@@ -160,6 +163,7 @@ export class Dashboard implements OnInit, OnDestroy {
         id: item.id,
         nombreNino: item.ninos?.nombres_apellidos || 'Desconocido',
         nombreTutor: item.ninos?.tutores?.nombres_apellidos || 'Desconocido',
+        parentescoTutor: item.ninos?.tutores?.parentesco || '',
         whatsapp: item.ninos?.tutores?.whatsapp || '',
         horaIngreso: new Date(item.ingreso_at),
         horaSalidaEstimada: new Date(item.salida_estimada_at),
@@ -212,6 +216,7 @@ export class Dashboard implements OnInit, OnDestroy {
         sesion.minutosRestantes = 0;
         sesion.tiempoRestanteStr = '00:00';
         sesion.estadoAlerta = 'expirado';
+        sesion.progresoColor = 'hsla(0, 70%, 50%, 0.15)'; // Rojo
       } else {
         const diffSecs = Math.floor(diffMs / 1000);
         const totalMins = Math.floor(diffSecs / 60);
@@ -235,6 +240,16 @@ export class Dashboard implements OnInit, OnDestroy {
         } else {
           sesion.estadoAlerta = 'normal';
         }
+
+        // Calcular el color de fondo basado en el porcentaje de tiempo restante (de verde a rojo)
+        const totalMs = sesion.horaSalidaEstimada.getTime() - sesion.horaIngreso.getTime();
+        let porcentaje = diffMs / totalMs;
+        if (porcentaje < 0) porcentaje = 0;
+        if (porcentaje > 1) porcentaje = 1;
+
+        // Hue va de 120 (verde) a 0 (rojo)
+        const hue = Math.floor(porcentaje * 120);
+        sesion.progresoColor = `hsla(${hue}, 70%, 50%, 0.15)`;
       }
     });
 
@@ -265,7 +280,7 @@ export class Dashboard implements OnInit, OnDestroy {
     // Calculamos la nueva fecha de salida estimada sumando 30 minutos (30 * 60000 milisegundos)
     const nuevaSalidaEstimada = new Date(sesion.horaSalidaEstimada.getTime() + 30 * 60000);
     const nuevosMinutosExtra = sesion.minutosExtra + 30;
-    const nuevoCostoExtra = sesion.costoExtra + 4; // Agrega $4 para que de $6 pase a $10
+    const nuevoCostoExtra = sesion.costoExtra + 3; // Agrega $3 para que de $7 pase a $10
 
     const { error } = await this.supabaseService.db('sesiones_juego')
       .update({

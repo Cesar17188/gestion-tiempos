@@ -63,13 +63,14 @@
                'status-normal': sesion.estadoAlerta === 'normal',
                'status-warning': sesion.estadoAlerta === 'advertencia',
                'status-expired': sesion.estadoAlerta === 'expirado'
-             }">
+             }"
+             [style.backgroundColor]="sesion.progresoColor">
         <div class="card-body">
           <div class="card-header">
             <div class="child-info">
               <h3>{{ sesion.nombreNino }}</h3>
               <p class="text-secondary">
-                <strong>Tutor:</strong> {{ sesion.nombreTutor }}
+                <strong>Tutor:</strong> {{ sesion.nombreTutor }} - {{ sesion.parentescoTutor }}
               </p>
             </div>
             <div class="timer-section">

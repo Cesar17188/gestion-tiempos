@@ -116,10 +116,27 @@
 
               <div>
                 <label class="block text-sm font-semibold text-gray-700">Nombres y Apellidos</label>
-                <input type="text" formControlName="ninoNombre"
-                       class="mt-2 block w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
-                       [ngClass]="{'border-red-300 bg-red-50': ninoCtrl.get('ninoNombre')?.invalid && ninoCtrl.get('ninoNombre')?.touched}"
-                       placeholder="Ej. Mateo Rodríguez">
+                <div class="mt-2 flex shadow-sm rounded-xl">
+                  <input type="text" formControlName="ninoNombre"
+                         class="flex-1 block w-full px-4 py-3 border border-gray-300 rounded-l-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                         [ngClass]="{'border-red-300 bg-red-50': ninoCtrl.get('ninoNombre')?.invalid && ninoCtrl.get('ninoNombre')?.touched}"
+                         placeholder="Ej. Mateo Rodríguez"
+                         (keyup.enter)="buscarPorNombreNino(i)">
+                  <button type="button" (click)="buscarPorNombreNino(i)" [disabled]="isSearchingNino && searchingNinoIndex === i"
+                          class="px-4 py-3 bg-indigo-50 border border-l-0 border-indigo-200 text-indigo-700 font-semibold rounded-r-xl hover:bg-indigo-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors flex items-center justify-center min-w-[100px]">
+                    @if (isSearchingNino && searchingNinoIndex === i) {
+                      <svg class="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                    } @else {
+                      Buscar
+                    }
+                  </button>
+                </div>
+                @if (searchNinoMessage && searchingNinoIndex === i) {
+                  <p class="mt-1.5 text-xs font-medium" [ngClass]="{'text-green-600': searchNinoMessage.includes('exitosamente'), 'text-amber-600': searchNinoMessage.includes('No se encontró'), 'text-red-600': searchNinoMessage.includes('Error') || searchNinoMessage.includes('Ingrese')}">{{ searchNinoMessage }}</p>
+                }
               </div>
 
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4">

@@ -1,0 +1,155 @@
+<div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+
+    <!-- Encabezado Interno y Menú de Sub-Pestañas -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-gray-100 pb-4 mb-6 gap-4">
+        <div>
+            <h3 class="text-lg font-bold text-gray-800">Parámetros del Sistema</h3>
+            <p class="text-xs text-gray-400">Control maestro de precios, automatizaciones de texto y credenciales de
+                acceso</p>
+        </div>
+        <div class="flex bg-gray-100 p-1 rounded-xl self-start">
+            <button type="button" (click)="subSeccion = 'negocio'"
+                [ngClass]="{'bg-white text-indigo-600 font-bold shadow-sm': subSeccion === 'negocio'}"
+                class="px-4 py-1.5 text-xs rounded-lg text-gray-500 transition-all">Reglas de Negocio</button>
+            <button type="button" (click)="subSeccion = 'personal'"
+                [ngClass]="{'bg-white text-indigo-600 font-bold shadow-sm': subSeccion === 'personal'}"
+                class="px-4 py-1.5 text-xs rounded-lg text-gray-500 transition-all">Equipo y Personal</button>
+        </div>
+    </div>
+
+    <!-- Alerta de Feedback de Éxito tipo Toast -->
+    @if (mensajeFeedback) {
+    <div
+        class="fixed bottom-8 right-8 z-50 px-5 py-4 bg-gray-900 text-white text-sm font-bold rounded-2xl shadow-2xl flex items-center gap-3">
+        <span class="flex items-center justify-center w-6 h-6 bg-emerald-500 rounded-full text-white shadow-sm">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
+            </svg>
+        </span>
+        {{ mensajeFeedback }}
+    </div>
+    }
+
+    <!-- SUB-SECCIÓN 1: REGLAS DE NEGOCIO (PRECIOS Y MENSAJES) -->
+    @if (subSeccion === 'negocio') {
+    <form [formGroup]="configForm" (ngSubmit)="guardarConfiguracion()" class="space-y-6">
+
+        <!-- Bloque de Precios -->
+        <div>
+            <h4 class="text-xs font-bold text-indigo-600 uppercase tracking-wider mb-3">Estructura Tarifaria</h4>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                    <label class="block text-xs font-medium text-gray-600">Costo Base ($)</label>
+                    <input type="number" step="0.01" formControlName="precio_base"
+                        class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-xl text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-600">Minutos del Bloque Base</label>
+                    <input type="number" formControlName="minutos_base"
+                        class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-xl text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-600">Costo por Minuto Extra ($)</label>
+                    <input type="number" step="0.01" formControlName="precio_minuto_extra"
+                        class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-xl text-sm">
+                </div>
+            </div>
+        </div>
+
+        <!-- Bloque de Notificaciones de WhatsApp -->
+        <div class="pt-4 border-t border-gray-100">
+            <h4 class="text-xs font-bold text-indigo-600 uppercase tracking-wider mb-1">Plantillas de Notificación</h4>
+            <p class="text-xxs text-gray-400 mb-4">Nota: El sistema reemplazará automáticamente la palabra clave con el
+                nombre de cada niño.</p>
+
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-medium text-gray-600">Mensaje de Bienvenida (Ingreso)</label>
+                    <textarea rows="2" formControlName="msg_bienvenida"
+                        class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-xl text-sm"></textarea>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-600">Alerta de Próximo Vencimiento (Faltan 5
+                        min)</label>
+                    <textarea rows="2" formControlName="msg_advertencia_5min"
+                        class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-xl text-sm"></textarea>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-600">Alerta de Tiempo Concluido</label>
+                    <textarea rows="2" formControlName="msg_tiempo_cumplido"
+                        class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-xl text-sm"></textarea>
+                </div>
+            </div>
+        </div>
+
+        <button type="submit" [disabled]="isSaving"
+            class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 rounded-xl text-sm transition-colors shadow-sm">
+            {{ isSaving ? 'Guardando Ajustes...' : 'Aplicar Cambios Globales' }}
+        </button>
+    </form>
+    }
+
+    <!-- SUB-SECCIÓN 2: CONTROL DE PERSONAL -->
+    @if (subSeccion === 'personal') {
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+
+        <!-- Formulario de Registro -->
+        <form [formGroup]="personalForm" (ngSubmit)="registrarColaborador()"
+            class="space-y-4 lg:border-r lg:pr-8 border-gray-100">
+            <h4 class="text-xs font-bold text-indigo-600 uppercase tracking-wider">Dar de Alta Personal</h4>
+            <div>
+                <label class="block text-xs font-medium text-gray-600">Nombre Completo</label>
+                <input type="text" formControlName="nombre"
+                    class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-xl text-sm"
+                    placeholder="Ej. Ana María López">
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-gray-600">Correo Institucional / Acceso</label>
+                <input type="email" formControlName="email"
+                    class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-xl text-sm"
+                    placeholder="ana@sala.com">
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-gray-600">Rol del Sistema</label>
+                <select formControlName="rol"
+                    class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-xl text-sm bg-white">
+                    <option value="ENCARGADO">Encargado de Caja</option>
+                    <option value="ADMINISTRADOR">Administrador General</option>
+                </select>
+            </div>
+            <button type="submit" [disabled]="personalForm.invalid || isSaving"
+                class="w-full bg-gray-900 hover:bg-gray-800 text-white text-xs font-bold py-2.5 rounded-xl transition-colors">
+                Enviar Invitación de Acceso
+            </button>
+        </form>
+
+        <!-- Tabla / Lista de Personal Registrado -->
+        <div class="lg:col-span-2 space-y-3">
+            <h4 class="text-xs font-bold text-gray-400 uppercase tracking-wider">Colaboradores Activos</h4>
+            <div class="divide-y divide-gray-50 max-h-[350px] overflow-y-auto pr-2">
+                @for (perfil of listaPersonal; track perfil.id) {
+                <div class="flex items-center justify-between py-3">
+                    <div class="flex items-center space-x-3">
+                        <div
+                            class="w-8 h-8 rounded-full bg-slate-100 text-slate-700 flex items-center justify-center font-bold text-xs uppercase">
+                            {{ perfil.nombre ? perfil.nombre.charAt(0) : 'U' }}
+                        </div>
+                        <div>
+                            <p class="text-sm font-bold text-gray-800">{{ perfil.nombre }}</p>
+                            <p class="text-xxs text-gray-400">ID: {{ perfil.id }}</p>
+                        </div>
+                    </div>
+                    <span
+                        [ngClass]="{'bg-purple-50 text-purple-600 border-purple-100': perfil.rol === 'ADMINISTRADOR', 'bg-blue-50 text-blue-600 border-blue-100': perfil.rol === 'ENCARGADO'}"
+                        class="text-xxs font-bold px-2.5 py-1 rounded-lg border uppercase tracking-wider">
+                        {{ perfil.rol }}
+                    </span>
+                </div>
+                }
+            </div>
+        </div>
+
+    </div>
+    }
+
+</div>

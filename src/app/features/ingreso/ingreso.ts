@@ -38,6 +38,10 @@ export class Ingreso {
   errorMessage = '';
   searchMessage = '';
 
+  isSearchingNino = false;
+  searchNinoMessage = '';
+  searchingNinoIndex = -1;
+
   // Estructura del formulario con validaciones requeridas
   ingresoForm: FormGroup = this.fb.group({
     // Datos del Tutor
@@ -167,6 +171,85 @@ export class Ingreso {
     }
   }
 
+  async buscarPorNombreNino(index: number) {
+    const ninoControl = this.ninosFormArray.at(index).get('ninoNombre');
+    if (!ninoControl || !ninoControl.value || ninoControl.value.trim() === '') {
+      this.searchNinoMessage = 'Ingrese un nombre para buscar.';
+      this.searchingNinoIndex = index;
+      this.cdr.detectChanges();
+      setTimeout(() => { this.searchNinoMessage = ''; this.cdr.detectChanges(); }, 3000);
+      return;
+    }
+
+    this.isSearchingNino = true;
+    this.searchingNinoIndex = index;
+    this.searchNinoMessage = '';
+    this.cdr.detectChanges();
+
+    const nombre = ninoControl.value.trim();
+
+    try {
+      // 1. Buscar Niño con su tutor
+      const { data: ninosData, error: ninosError } = await this.supabaseService.db('ninos')
+        .select('*, tutores(*)')
+        .ilike('nombres_apellidos', `%${nombre}%`)
+        .limit(1)
+        .maybeSingle();
+
+      if (ninosError) throw ninosError;
+
+      if (ninosData && ninosData.tutores) {
+        const tutorData = ninosData.tutores as any;
+        
+        // Autocompletar datos del tutor
+        this.ingresoForm.patchValue({
+          tutorNombre: tutorData.nombres_apellidos || '',
+          tutorCedula: tutorData.cedula || '',
+          tutorAlias: tutorData.alias || '',
+          tutorParentesco: tutorData.parentesco || '',
+          tutorCorreo: tutorData.correo || '',
+          tutorContactoAdicional: tutorData.contacto_adicional_nombre || '',
+          tutorWhatsapp: tutorData.whatsapp || ''
+        });
+
+        // 2. Buscar todos los niños asociados al tutor
+        const { data: todosNinosData, error: todosNinosError } = await this.supabaseService.db('ninos')
+          .select('*')
+          .eq('tutor_id', tutorData.id)
+          .order('id', { ascending: true });
+
+        if (todosNinosData && todosNinosData.length > 0 && !todosNinosError) {
+          this.ninosFormArray.clear();
+          todosNinosData.forEach((nino: any) => {
+            const ninoGroup = this.crearNinoFormGroup();
+            let fechaParsed = '';
+            if (nino.fecha_nacimiento) {
+              fechaParsed = nino.fecha_nacimiento.split('T')[0];
+            }
+            ninoGroup.patchValue({
+              ninoNombre: nino.nombres_apellidos || '',
+              ninoAlias: nino.alias || '',
+              ninoFechaNacimiento: fechaParsed,
+              ninoCodigo: nino.codigo_especifico || ninoGroup.get('ninoCodigo')?.value,
+              ninoNotas: nino.notas || ''
+            });
+            this.ninosFormArray.push(ninoGroup);
+          });
+          this.searchNinoMessage = `Datos del tutor y ${todosNinosData.length} niño(s) cargados exitosamente.`;
+        }
+      } else {
+        this.searchNinoMessage = 'No se encontró un niño con ese nombre.';
+      }
+    } catch (error) {
+      console.error('Error buscando niño:', error);
+      this.searchNinoMessage = 'Error al buscar datos.';
+    } finally {
+      this.isSearchingNino = false;
+      this.cdr.detectChanges();
+      setTimeout(() => { this.searchNinoMessage = ''; this.searchingNinoIndex = -1; this.cdr.detectChanges(); }, 4000);
+    }
+  }
+
   async onSubmit() {
     if (this.ingresoForm.invalid) {
       this.ingresoForm.markAllAsTouched();
@@ -181,6 +264,19 @@ export class Ingreso {
     let ninosIdsCreados: string[] = [];
 
     try {
+      // Obtener el ID del usuario (encargado) actual desde la tabla perfiles
+      const { data: { user } } = await this.supabaseService.supabase.auth.getUser();
+      let encargadoId = null;
+      if (user && user.email) {
+        const { data: perfil } = await this.supabaseService.db('perfiles')
+          .select('id')
+          .eq('email', user.email)
+          .maybeSingle();
+        if (perfil) {
+          encargadoId = perfil.id;
+        }
+      }
+
       // 1. PASO UNO: Buscar si el tutor ya existe para no duplicarlo, o crearlo.
       const { data: existingTutor } = await this.supabaseService.db('tutores')
         .select('id')
@@ -252,7 +348,7 @@ export class Ingreso {
         
         const adultosAdicionales = parseInt(values.adultosExtra || '0');
         const costoExtraInicial = adultosAdicionales * 2.00;
-        const costoBase = minutosAAgregar === 60 ? 10 : 6;
+        const costoBase = minutosAAgregar === 60 ? 10 : 7;
 
         const { error: sesionError } = await this.supabaseService.db('sesiones_juego')
           .insert({
@@ -264,10 +360,19 @@ export class Ingreso {
             adultos_adicionales: adultosAdicionales,
             costo_base: costoBase,
             costo_extra: costoExtraInicial,
-            minutos_extra: 0
+            minutos_extra: 0,
+            encargado_id: encargadoId
           });
 
         if (sesionError) throw new Error(`Error al iniciar sesión para ${nino.ninoNombre}: ${sesionError.message}`);
+      }
+
+      // Enviar mensaje de bienvenida por WhatsApp al tutor
+      if (values.tutorWhatsapp) {
+        const mensajeBienvenida = "Bienvenida/o a Vida Pequeña, disfruta de los juegos junto a tus pequeños";
+        const mensajeCodificado = encodeURIComponent(mensajeBienvenida);
+        const url = `https://wa.me/${values.tutorWhatsapp}?text=${mensajeCodificado}`;
+        window.open(url, '_blank');
       }
 
       // Éxito absoluto -> Volvemos al panel de control para ver las tarjetas

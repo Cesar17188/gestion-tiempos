@@ -39,6 +39,11 @@
                     class="py-2.5 px-4 border-b-2 text-sm font-medium transition-all">
                     Fidelidad y Frecuencia de Niños
                 </button>
+                <button (click)="pestanaActiva = 'config'"
+                    [ngClass]="{'border-indigo-600 text-indigo-600 font-bold': pestanaActiva === 'config', 'border-transparent text-gray-500 hover:text-gray-700': pestanaActiva !== 'config'}"
+                    class="py-2.5 px-4 border-b-2 text-sm font-medium transition-all">
+                    ⚙️ Configuración del Sistema
+                </button>
             </div>
 
             @if (pestanaActiva === 'general') {
@@ -62,9 +67,13 @@
             <app-admin-tabla [metricas]="metricasEncargados"></app-admin-tabla>
             }
 
-            } @else {
+            } @else if (pestanaActiva === 'ninos') {
 
             <app-admin-ninos></app-admin-ninos>
+
+            } @else if (pestanaActiva === 'config') {
+
+            <app-admin-config></app-admin-config>
 
             }
 

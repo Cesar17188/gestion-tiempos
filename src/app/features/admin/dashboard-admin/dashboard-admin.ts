@@ -8,10 +8,11 @@ import { AdminMetricas } from '../components/admin-metricas/admin-metricas';
 import { AdminFiltros } from '../components/admin-filtros/admin-filtros';
 import { AdminTabla } from '../components/admin-tabla/admin-tabla';
 import { AdminNinos } from '../components/admin-ninos/admin-ninos';
+import { AdminConfig } from '../components/admin-config/admin-config';
 
 @Component({
   selector: 'app-dashboard-admin',
-  imports: [CommonModule, RouterModule, AdminMetricas, AdminFiltros, AdminTabla, AdminNinos],
+  imports: [CommonModule, RouterModule, AdminMetricas, AdminFiltros, AdminTabla, AdminNinos, AdminConfig],
   templateUrl: './dashboard-admin.html',
   styleUrl: './dashboard-admin.css',
 })
@@ -23,7 +24,7 @@ export class DashboardAdmin implements OnInit {
   fechaInicio: string = '';
   fechaFin: string = '';
   encargadoFiltro: string = 'TODOS';
-  pestanaActiva: 'general' | 'ninos' = 'general';
+  pestanaActiva: 'general' | 'ninos' | 'config' = 'general';
 
   listaEncargados: any[] = [];
   totalRecaudado: number = 0;
@@ -99,23 +100,22 @@ export class DashboardAdmin implements OnInit {
       const dia = dateStr.charAt(0).toUpperCase() + dateStr.slice(1); // ej: "Lunes, 19/10/2026"
       contadorDias[dia] = (contadorDias[dia] || 0) + 1;
 
-      const empId = sesion.encargado_id;
-      if (empId) {
-        if (!statsEncargados[empId]) {
-          statsEncargados[empId] = {
-            nombre: sesion.perfiles?.nombre || 'Desconocido',
-            ninosIngresados: 0,
-            recaudado: 0,
-            primeraSesion: new Date(sesion.ingreso_at),
-            ultimaSesion: new Date(sesion.salida_estimada_at)
-          };
-        }
-        statsEncargados[empId].ninosIngresados += 1;
-        statsEncargados[empId].recaudado += Number(sesion.costo_base) + Number(sesion.costo_extra);
-        const f = new Date(sesion.ingreso_at);
-        if (f < statsEncargados[empId].primeraSesion) statsEncargados[empId].primeraSesion = f;
-        if (f > statsEncargados[empId].ultimaSesion) statsEncargados[empId].ultimaSesion = f;
+      const empId = sesion.encargado_id || 'SIN_ASIGNAR';
+      
+      if (!statsEncargados[empId]) {
+        statsEncargados[empId] = {
+          nombre: sesion.perfiles?.nombre || 'Desconocido',
+          ninosIngresados: 0,
+          recaudado: 0,
+          primeraSesion: new Date(sesion.ingreso_at),
+          ultimaSesion: new Date(sesion.salida_estimada_at)
+        };
       }
+      statsEncargados[empId].ninosIngresados += 1;
+      statsEncargados[empId].recaudado += Number(sesion.costo_base) + Number(sesion.costo_extra);
+      const f = new Date(sesion.ingreso_at);
+      if (f < statsEncargados[empId].primeraSesion) statsEncargados[empId].primeraSesion = f;
+      if (f > statsEncargados[empId].ultimaSesion) statsEncargados[empId].ultimaSesion = f;
     });
 
     let maxNinos = 0;
