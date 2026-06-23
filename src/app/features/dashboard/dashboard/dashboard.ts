@@ -1,5 +1,5 @@
-import { Component, OnInit, OnDestroy, inject, ChangeDetectorRef } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, OnInit, OnDestroy, inject, ChangeDetectorRef, PLATFORM_ID } from '@angular/core';
+import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
 import { interval, Subscription } from 'rxjs';
 import { trigger, transition, style, animate } from '@angular/animations';
@@ -24,6 +24,7 @@ export interface SesionJuego {
   adultosAdicionales: number;
   extensionAplicada: boolean;
   progresoColor?: string;
+  oculta?: boolean;
 }
 
 @Component({
@@ -56,8 +57,10 @@ export class Dashboard implements OnInit, OnDestroy {
   private supabaseService = inject(SupabaseService);
   private router = inject(Router);
   private cdr = inject(ChangeDetectorRef);
+  private platformId = inject(PLATFORM_ID);
 
   sesiones: SesionJuego[] = [];
+  cantidadVisibles: number = 0;
   userGreeting: string = 'Cargando...';
   userName: string = '';
   avatarUrl: string | null = null;
@@ -69,8 +72,11 @@ export class Dashboard implements OnInit, OnDestroy {
     await this.establecerSaludoPorRol();
     await this.cargarSesionesActivas();
     this.cdr.detectChanges(); // Forzamos actualización inicial al terminar la carga
-    this.iniciarTemporizador();
-    this.suscribirseCambiosEnVivo();
+
+    if (isPlatformBrowser(this.platformId)) {
+      this.iniciarTemporizador();
+      this.suscribirseCambiosEnVivo();
+    }
   }
 
   ngOnDestroy() {
@@ -207,10 +213,18 @@ export class Dashboard implements OnInit, OnDestroy {
 
   actualizarTiempos() {
     const ahora = new Date().getTime();
+    let visibles = 0;
 
     this.sesiones.forEach(sesion => {
       const salida = sesion.horaSalidaEstimada.getTime();
       const diffMs = salida - ahora;
+
+      if (diffMs <= -600000) { // 10 minutos
+        sesion.oculta = true;
+      } else {
+        sesion.oculta = false;
+        visibles++;
+      }
 
       if (diffMs <= 0) {
         sesion.minutosRestantes = 0;
@@ -253,6 +267,7 @@ export class Dashboard implements OnInit, OnDestroy {
       }
     });
 
+    this.cantidadVisibles = visibles;
     this.cdr.detectChanges(); // Forzamos a la UI a refrescar el temporizador cada segundo
   }
 

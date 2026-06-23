@@ -47,7 +47,7 @@
   <main class="dashboard-main">
     <!-- Toolbar -->
     <div class="toolbar">
-      <h2>Niños Activos en Sala ({{ sesiones.length }})</h2>
+      <h2>Niños Activos en Sala ({{ cantidadVisibles }})</h2>
       <button routerLink="/ingreso" class="btn btn-new" title="Registrar nuevo ingreso">
         <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
@@ -56,9 +56,9 @@
       </button>
     </div>
 
-    <!-- Grid de Tarjetas de Sesión -->
     <div class="sessions-grid">
       @for (sesion of sesiones; track sesion.id) {
+      @if (!sesion.oculta) {
       <div class="session-card" [ngClass]="{
                'status-normal': sesion.estadoAlerta === 'normal',
                'status-warning': sesion.estadoAlerta === 'advertencia',
@@ -128,9 +128,10 @@
         </div>
       </div>
       }
+      }
 
       <!-- Empty State -->
-      @if (sesiones.length === 0) {
+      @if (cantidadVisibles === 0) {
       <div class="empty-state">
         <svg class="icon-large" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
