@@ -22,6 +22,31 @@
           </div>
 
           <div>
+            <label class="block text-sm font-semibold text-gray-700">Cédula de Identidad</label>
+            <div class="mt-2 flex shadow-sm rounded-xl">
+              <input type="text" formControlName="tutorCedula"
+                     class="flex-1 block w-full px-4 py-3 border border-gray-300 rounded-l-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                     [ngClass]="{'border-red-300 bg-red-50': ingresoForm.get('tutorCedula')?.invalid && ingresoForm.get('tutorCedula')?.touched}"
+                     placeholder="Ej. 1712345678"
+                     (keyup.enter)="buscarPorCedula()">
+              <button type="button" (click)="buscarPorCedula()" [disabled]="isSearching"
+                      class="px-4 py-3 bg-indigo-50 border border-l-0 border-indigo-200 text-indigo-700 font-semibold rounded-r-xl hover:bg-indigo-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors flex items-center justify-center min-w-[100px]">
+                @if (isSearching) {
+                  <svg class="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                } @else {
+                  Buscar
+                }
+              </button>
+            </div>
+            @if (searchMessage) {
+              <p class="mt-1.5 text-xs font-medium" [ngClass]="{'text-green-600': searchMessage.includes('exitosamente'), 'text-amber-600': searchMessage.includes('No se encontró'), 'text-red-600': searchMessage.includes('Error') || searchMessage.includes('Ingrese')}">{{ searchMessage }}</p>
+            }
+          </div>
+
+          <div>
             <label class="block text-sm font-semibold text-gray-700">Nombre Completo</label>
             <input type="text" formControlName="tutorNombre"
                    class="mt-2 block w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
@@ -31,39 +56,11 @@
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label class="block text-sm font-semibold text-gray-700">Cédula de Identidad</label>
-              <div class="mt-2 flex shadow-sm rounded-xl">
-                <input type="text" formControlName="tutorCedula"
-                       class="flex-1 block w-full px-4 py-3 border border-gray-300 rounded-l-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
-                       [ngClass]="{'border-red-300 bg-red-50': ingresoForm.get('tutorCedula')?.invalid && ingresoForm.get('tutorCedula')?.touched}"
-                       placeholder="Ej. 1712345678"
-                       (keyup.enter)="buscarPorCedula()">
-                <button type="button" (click)="buscarPorCedula()" [disabled]="isSearching"
-                        class="px-4 py-3 bg-indigo-50 border border-l-0 border-indigo-200 text-indigo-700 font-semibold rounded-r-xl hover:bg-indigo-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors flex items-center justify-center min-w-[100px]">
-                  @if (isSearching) {
-                    <svg class="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                  } @else {
-                    Buscar
-                  }
-                </button>
-              </div>
-              @if (searchMessage) {
-                <p class="mt-1.5 text-xs font-medium" [ngClass]="{'text-green-600': searchMessage.includes('exitosamente'), 'text-amber-600': searchMessage.includes('No se encontró'), 'text-red-600': searchMessage.includes('Error') || searchMessage.includes('Ingrese')}">{{ searchMessage }}</p>
-              }
-            </div>
-
-            <div>
               <label class="block text-sm font-semibold text-gray-700">Alias (Apodo)</label>
               <input type="text" formControlName="tutorAlias"
                      class="mt-2 block w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
                      placeholder="Ej. Mamá Laura">
             </div>
-          </div>
-
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label class="block text-sm font-semibold text-gray-700">Parentesco con el niño(a)</label>
               <input type="text" formControlName="tutorParentesco"
@@ -71,14 +68,14 @@
                      [ngClass]="{'border-red-300 bg-red-50': ingresoForm.get('tutorParentesco')?.invalid && ingresoForm.get('tutorParentesco')?.touched}"
                      placeholder="Ej. Madre, Padre, Tía...">
             </div>
+          </div>
 
-            <div>
-              <label class="block text-sm font-semibold text-gray-700">Correo Electrónico (Opcional)</label>
-              <input type="email" formControlName="tutorCorreo"
-                     class="mt-2 block w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
-                     [ngClass]="{'border-red-300 bg-red-50': ingresoForm.get('tutorCorreo')?.invalid && ingresoForm.get('tutorCorreo')?.touched}"
-                     placeholder="Ej. laura@correo.com">
-            </div>
+          <div>
+            <label class="block text-sm font-semibold text-gray-700">Correo Electrónico (Opcional)</label>
+            <input type="email" formControlName="tutorCorreo"
+                   class="mt-2 block w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                   [ngClass]="{'border-red-300 bg-red-50': ingresoForm.get('tutorCorreo')?.invalid && ingresoForm.get('tutorCorreo')?.touched}"
+                   placeholder="Ej. laura@correo.com">
           </div>
 
           <div>
