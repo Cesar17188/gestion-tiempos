@@ -68,12 +68,12 @@ export class Dashboard implements OnInit, OnDestroy {
   private realtimeChannel: any;
 
   async ngOnInit() {
-    await this.verificarPermisos(); // <-- Agregamos esta línea al inicio
-    await this.establecerSaludoPorRol();
-    await this.cargarSesionesActivas();
-    this.cdr.detectChanges(); // Forzamos actualización inicial al terminar la carga
-
     if (isPlatformBrowser(this.platformId)) {
+      await this.verificarPermisos();
+      await this.establecerSaludoPorRol();
+      await this.cargarSesionesActivas();
+      this.cdr.detectChanges(); // Forzamos actualización inicial al terminar la carga
+
       this.iniciarTemporizador();
       this.suscribirseCambiosEnVivo();
     }
@@ -137,6 +137,7 @@ export class Dashboard implements OnInit, OnDestroy {
 
   // 1. CONSULTA REAL A LA BASE DE DATOS
   async cargarSesionesActivas() {
+    const hace10Minutos = new Date(Date.now() - 600000).toISOString();
     // Usamos la potencia de PostgREST para hacer el JOIN de las 3 tablas
     const { data, error } = await this.supabaseService.db('sesiones_juego')
       .select(`
@@ -156,7 +157,7 @@ export class Dashboard implements OnInit, OnDestroy {
           )
         )
       `)
-      .eq('estado', 'ACTIVO'); // Solo traemos los que están jugando
+      .or(`estado.eq.ACTIVO,and(estado.eq.FINALIZADO,salida_estimada_at.gte.${hace10Minutos})`);
 
     if (error) {
       console.error('Error al cargar las sesiones:', error);
@@ -227,6 +228,10 @@ export class Dashboard implements OnInit, OnDestroy {
       }
 
       if (diffMs <= 0) {
+        if (sesion.estadoAlerta !== 'expirado') {
+          // Si recién acaba de expirar visualmente, lo finalizamos en la BD
+          this.marcarComoFinalizado(sesion.id);
+        }
         sesion.minutosRestantes = 0;
         sesion.tiempoRestanteStr = '00:00';
         sesion.estadoAlerta = 'expirado';
@@ -283,6 +288,20 @@ export class Dashboard implements OnInit, OnDestroy {
     const mensajeCodificado = encodeURIComponent(mensaje);
     const url = `https://wa.me/${sesion.whatsapp}?text=${mensajeCodificado}`;
     window.open(url, '_blank');
+  }
+
+  // ACTUALIZACIÓN DE ESTADO A FINALIZADO AUTOMÁTICA
+  async marcarComoFinalizado(id: string) {
+    const { error } = await this.supabaseService.db('sesiones_juego')
+      .update({ estado: 'FINALIZADO' })
+      .eq('id', id)
+      .eq('estado', 'ACTIVO'); // Solo actualizamos si sigue activo
+      
+    if (error) {
+      console.error('Error al actualizar sesión a FINALIZADO:', error);
+    } else {
+      console.log('Sesión auto-finalizada en BD:', id);
+    }
   }
 
   // 5. AGREGAR 30 MINUTOS A LA SESIÓN

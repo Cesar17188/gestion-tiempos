@@ -28,7 +28,7 @@ export class AdminNinos implements OnInit {
   private supabase = inject(SupabaseService);
 
   isLoading = true;
-  fechaInicio: string = this.obtenerFechaHace(1);
+  fechaInicio: string = this.obtenerFechaHace(7);
   fechaFin: string = this.obtenerFechaHace(0);
 
   reporteNinos: MetricaNino[] = [];

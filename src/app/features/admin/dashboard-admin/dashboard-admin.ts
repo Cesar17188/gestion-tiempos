@@ -9,10 +9,11 @@ import { AdminFiltros } from '../components/admin-filtros/admin-filtros';
 import { AdminTabla } from '../components/admin-tabla/admin-tabla';
 import { AdminNinos } from '../components/admin-ninos/admin-ninos';
 import { AdminConfig } from '../components/admin-config/admin-config';
+import { AdminDescargas } from '../components/admin-descargas/admin-descargas';
 
 @Component({
   selector: 'app-dashboard-admin',
-  imports: [CommonModule, RouterModule, AdminMetricas, AdminFiltros, AdminTabla, AdminNinos, AdminConfig],
+  imports: [CommonModule, RouterModule, AdminMetricas, AdminFiltros, AdminTabla, AdminNinos, AdminConfig, AdminDescargas],
   templateUrl: './dashboard-admin.html',
   styleUrl: './dashboard-admin.css',
 })
@@ -24,7 +25,7 @@ export class DashboardAdmin implements OnInit {
   fechaInicio: string = '';
   fechaFin: string = '';
   encargadoFiltro: string = 'TODOS';
-  pestanaActiva: 'general' | 'ninos' | 'config' = 'general';
+  pestanaActiva: 'general' | 'ninos' | 'config' | 'descargas' = 'general';
 
   listaEncargados: any[] = [];
   totalRecaudado: number = 0;
@@ -34,6 +35,13 @@ export class DashboardAdmin implements OnInit {
   metricasEncargados: any[] = [];
 
   async ngOnInit() {
+    const hoy = new Date();
+    const hace7Dias = new Date();
+    hace7Dias.setDate(hoy.getDate() - 7);
+
+    this.fechaFin = hoy.toISOString().split('T')[0];
+    this.fechaInicio = hace7Dias.toISOString().split('T')[0];
+
     await this.cargarEncargados();
     await this.procesarDashboard();
   }
@@ -101,7 +109,7 @@ export class DashboardAdmin implements OnInit {
       contadorDias[dia] = (contadorDias[dia] || 0) + 1;
 
       const empId = sesion.encargado_id || 'SIN_ASIGNAR';
-      
+
       if (!statsEncargados[empId]) {
         statsEncargados[empId] = {
           nombre: sesion.perfiles?.nombre || 'Desconocido',
