@@ -69,7 +69,50 @@ export class Login {
         this.modalMessage = 'El usuario no fue encontrado en el sistema o las credenciales son incorrectas.';
         this.showModal = true;
       } else {
-        // Si el login es exitoso, redirigimos al dashboard
+        // Verificar perfil y restricciones de horario para encargados
+        const { data: perfil, error: perfilError } = await this.supabaseService.db('perfiles')
+          .select('rol, activo, hora_entrada, hora_salida')
+          .eq('email', email)
+          .single();
+
+        if (perfil && perfil.rol === 'ENCARGADO') {
+          // 1. Verificar si está activo (puede ser false, por defecto asumimos true si es null)
+          if (perfil.activo === false) {
+            await this.supabaseService.auth.signOut();
+            this.modalMessage = 'Tu cuenta ha sido deshabilitada por el administrador.';
+            this.showModal = true;
+            this.cdr.detectChanges();
+            return;
+          }
+
+          // 2. Verificar horario laboral
+          if (perfil.hora_entrada && perfil.hora_salida) {
+            const now = new Date();
+            const currentHours = now.getHours().toString().padStart(2, '0');
+            const currentMinutes = now.getMinutes().toString().padStart(2, '0');
+            const currentTime = `${currentHours}:${currentMinutes}`;
+
+            // Si el horario de fin es menor al inicio, significa que cruza la medianoche (ej. 22:00 a 06:00)
+            let fueraDeHorario = false;
+            if (perfil.hora_entrada <= perfil.hora_salida) {
+              // Horario diurno normal
+              fueraDeHorario = (currentTime < perfil.hora_entrada || currentTime > perfil.hora_salida);
+            } else {
+              // Horario nocturno
+              fueraDeHorario = (currentTime < perfil.hora_entrada && currentTime > perfil.hora_salida);
+            }
+
+            if (fueraDeHorario) {
+              await this.supabaseService.auth.signOut();
+              this.modalMessage = `Acceso denegado. Estás intentando ingresar fuera de tu horario laboral asignado (${perfil.hora_entrada} a ${perfil.hora_salida}).`;
+              this.showModal = true;
+              this.cdr.detectChanges();
+              return;
+            }
+          }
+        }
+
+        // Si el login es exitoso y cumple las reglas, redirigimos al dashboard
         this.router.navigate(['/dashboard']);
       }
       this.cdr.detectChanges();

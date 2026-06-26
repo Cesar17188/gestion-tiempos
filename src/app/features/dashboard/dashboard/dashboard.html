@@ -19,6 +19,20 @@
         <span>Métricas</span>
       </button>
       }
+
+      @if (horarioTurno) {
+      <div style="flex: 1; text-align: center;">
+        <span style="display: inline-flex; align-items: center; gap: 6px; font-size: 0.8rem; font-weight: 600; color: #475569; background: #f8fafc; padding: 4px 12px; border-radius: 9999px; border: 1px solid #e2e8f0; box-shadow: 0 1px 2px rgba(0,0,0,0.02);">
+          <svg style="width: 14px; height: 14px; color: #64748b;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+          Turno: {{ horarioTurno }}
+        </span>
+      </div>
+      } @else {
+      <div style="flex: 1;"></div>
+      }
+
       <div class="user-actions">
         <div class="user-info">
           <span class="user-greeting">{{ userGreeting }}</span>
@@ -104,6 +118,22 @@
               }
             </span>
           </div>
+
+          @if (sesion.estadoAlerta === 'expirado') {
+          <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid rgba(0,0,0,0.05);">
+            <label style="display: block; font-size: 0.85rem; font-weight: 600; color: #64748b; margin-bottom: 0.5rem;">
+              Tipología del Cliente:
+            </label>
+            <select (change)="guardarTipologia(sesion, $event)" [value]="sesion.tipologia || ''"
+                    style="width: 100%; padding: 0.5rem 0.75rem; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 0.9rem; background-color: white; outline: none; cursor: pointer; color: #334155;">
+              <option value="" disabled>Seleccionar tipo...</option>
+              <option value="Mamá Respiro">1. Mamá Respiro</option>
+              <option value="Mamá Social">2. Mamá Social</option>
+              <option value="Familia Moderna">3. Familia Moderna</option>
+              <option value="Cuidadora del Desarrollo">4. Cuidadora del Desarrollo</option>
+            </select>
+          </div>
+          }
         </div>
 
         <div class="card-actions">

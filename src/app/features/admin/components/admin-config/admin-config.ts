@@ -1,11 +1,11 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { ReactiveFormsModule, FormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { SupabaseService } from '../../../../core/services/supabase/supabase';
 
 @Component({
   selector: 'app-admin-config',
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, FormsModule],
   templateUrl: './admin-config.html',
   styleUrl: './admin-config.css',
 })
@@ -92,6 +92,25 @@ export class AdminConfig implements OnInit {
     this.personalForm.reset({ rol: 'ENCARGADO' });
     this.isSaving = false;
     await this.cargarDatos();
+  }
+
+  async actualizarPersonal(perfil: any) {
+    this.isSaving = true;
+
+    const { error } = await this.supabase.from('perfiles')
+      .update({
+        hora_entrada: perfil.hora_entrada,
+        hora_salida: perfil.hora_salida,
+        activo: perfil.activo
+      })
+      .eq('id', perfil.id);
+
+    this.isSaving = false;
+    if (error) {
+      alert('Error al actualizar el personal: ' + error.message);
+    } else {
+      this.mostrarFeedback('cambios realizados correctamente');
+    }
   }
 
   private mostrarFeedback(msg: string) {

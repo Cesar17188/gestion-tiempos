@@ -27,7 +27,7 @@ export class AdminDescargas implements OnInit {
     'ID_Sesion', 'Fecha_Ingreso', 'Hora_Ingreso', 'Dia_Semana', 'Hora_Salida_Estimada', 'Estado_Sesion',
     'Nino', 'Edad_Nino', 'Tutor_Responsable', 'Parentesco', 'Observaciones', 
     'Costo_Base', 'Minutos_Extra', 'Costo_Extra', 'Total_Pagado',
-    'Registrado_Por', 'Requiere_Factura', 'Identificacion', 'Razon_Social',
+    'Registrado_Por', 'Tipologia', 'Requiere_Factura', 'Identificacion', 'Razon_Social',
     'Email_Factura', 'Estado_Factura', 'Clave_Acceso_SRI'
   ];
 
@@ -48,7 +48,7 @@ export class AdminDescargas implements OnInit {
     // Consultamos absolutamente todo el histórico cruzando relaciones
     let query = this.supabase.from('sesiones_juego')
       .select(`
-        id, ingreso_at, salida_estimada_at, estado, costo_base, minutos_extra, costo_extra,
+        id, ingreso_at, salida_estimada_at, estado, costo_base, minutos_extra, costo_extra, tipologia,
         ninos ( nombres_apellidos, fecha_nacimiento, notas, tutores ( nombres_apellidos, parentesco ) ),
         perfiles ( nombre )
       `)
@@ -107,6 +107,7 @@ export class AdminDescargas implements OnInit {
           Costo_Extra: item.costo_extra,
           Total_Pagado: Number(item.costo_base) + Number(item.costo_extra),
           Registrado_Por: item.perfiles?.nombre || 'Desconocido',
+          Tipologia: item.tipologia || '-',
           Requiere_Factura: item.requiere_factura ? 'SI' : 'NO',
           Identificacion: item.identificacion || '',
           Razon_Social: item.razon_social || '',

@@ -25,6 +25,7 @@ export interface SesionJuego {
   extensionAplicada: boolean;
   progresoColor?: string;
   oculta?: boolean;
+  tipologia?: string;
 }
 
 @Component({
@@ -64,6 +65,10 @@ export class Dashboard implements OnInit, OnDestroy {
   userGreeting: string = 'Cargando...';
   userName: string = '';
   avatarUrl: string | null = null;
+  horarioTurno: string = '';
+  horaEntrada?: string;
+  horaSalida?: string;
+  cerrandoSesion: boolean = false;
   private timerSubscription?: Subscription;
   private realtimeChannel: any;
 
@@ -98,7 +103,7 @@ export class Dashboard implements OnInit, OnDestroy {
       if (user) {
         const { data: perfil, error: profileError } = await this.supabaseService.supabase
           .from('perfiles')
-          .select('rol, nombre, avatar_url')
+          .select('rol, nombre, avatar_url, hora_entrada, hora_salida')
           .eq('email', user.email)
           .single();
 
@@ -112,6 +117,11 @@ export class Dashboard implements OnInit, OnDestroy {
             this.userGreeting = 'Hola, Administrador';
           } else if (rolUsuario === 'ENCARGADO') {
             this.userGreeting = 'Hola, Encargado';
+            if (perfil.hora_entrada && perfil.hora_salida) {
+              this.horaEntrada = perfil.hora_entrada;
+              this.horaSalida = perfil.hora_salida;
+              this.horarioTurno = `(${perfil.hora_entrada} - ${perfil.hora_salida})`;
+            }
           } else {
             this.userGreeting = 'Hola, Usuario';
           }
@@ -148,6 +158,7 @@ export class Dashboard implements OnInit, OnDestroy {
         minutos_extra,
         costo_extra,
         adultos_adicionales,
+        tipologia,
         ninos (
           nombres_apellidos,
           tutores (
@@ -182,7 +193,8 @@ export class Dashboard implements OnInit, OnDestroy {
         costoExtra: item.costo_extra || 0,
         adultosAdicionales: item.adultos_adicionales || 0,
         extensionAplicada: (item.minutos_extra || 0) > 0,
-        costoTotal: (item.costo_base || 30) + (item.costo_extra || 0)
+        costoTotal: (item.costo_base || 30) + (item.costo_extra || 0),
+        tipologia: item.tipologia || ''
       }));
 
       this.actualizarTiempos(); // Calculamos el tiempo inmediatamente
@@ -213,6 +225,29 @@ export class Dashboard implements OnInit, OnDestroy {
   }
 
   actualizarTiempos() {
+    // 1. Verificación automática de fin de turno para encargados
+    if (this.horaEntrada && this.horaSalida && !this.cerrandoSesion) {
+      const now = new Date();
+      const currentHours = now.getHours().toString().padStart(2, '0');
+      const currentMinutes = now.getMinutes().toString().padStart(2, '0');
+      const currentTime = `${currentHours}:${currentMinutes}`;
+      
+      let fueraDeHorario = false;
+      if (this.horaEntrada <= this.horaSalida) {
+        fueraDeHorario = (currentTime < this.horaEntrada || currentTime > this.horaSalida);
+      } else {
+        fueraDeHorario = (currentTime < this.horaEntrada && currentTime > this.horaSalida);
+      }
+
+      if (fueraDeHorario) {
+        this.cerrandoSesion = true;
+        alert('Tu turno de trabajo ha finalizado. La sesión se cerrará automáticamente.');
+        this.cerrarSesion();
+        return; // Detenemos la actualización porque se va a cerrar sesión
+      }
+    }
+
+    // 2. Actualización de tiempos de las sesiones
     const ahora = new Date().getTime();
     let visibles = 0;
 
@@ -320,7 +355,8 @@ export class Dashboard implements OnInit, OnDestroy {
       .update({
         salida_estimada_at: nuevaSalidaEstimada.toISOString(),
         minutos_extra: nuevosMinutosExtra,
-        costo_extra: nuevoCostoExtra
+        costo_extra: nuevoCostoExtra,
+        estado: 'ACTIVO'
       })
       .eq('id', sesion.id);
 
@@ -338,6 +374,29 @@ export class Dashboard implements OnInit, OnDestroy {
       this.actualizarTiempos();
     }
   }
+
+
+  // GUARDAR TIPOLOGÍA
+  async guardarTipologia(sesion: SesionJuego, event: Event) {
+    const selectElement = event.target as HTMLSelectElement;
+    const tipologia = selectElement.value;
+    if (!tipologia) return;
+
+    // Actualizamos localmente para feedback inmediato
+    sesion.tipologia = tipologia;
+
+    const { error } = await this.supabaseService.db('sesiones_juego')
+      .update({ tipologia: tipologia })
+      .eq('id', sesion.id);
+
+    if (error) {
+      console.error('Error al guardar tipología:', error);
+      alert('Hubo un error al guardar la tipología del cliente.');
+    } else {
+      console.log('Tipología guardada:', tipologia);
+    }
+  }
+
   // 3. FUNCIÓN PARA VERIFICAR SI EL USUARIO ES ADMINISTRADOR
   async verificarPermisos() {
     const { data: { user } } = await this.supabaseService.auth.getUser();
