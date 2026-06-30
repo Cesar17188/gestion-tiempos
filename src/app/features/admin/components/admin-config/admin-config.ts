@@ -19,6 +19,14 @@ export class AdminConfig implements OnInit {
   subSeccion: 'negocio' | 'personal' = 'negocio'; // Control de sub-pestañas
   mensajeFeedback = '';
 
+  // Variables para Dialog Modal
+  showConfirmDialog = false;
+  dialogTitle = '';
+  dialogMessage = '';
+  dialogPrimaryBtn = 'Aceptar';
+  dialogSecondaryBtn = '';
+  private dialogResolver?: (value: boolean) => void;
+
   configForm!: FormGroup;
   personalForm!: FormGroup;
   listaPersonal: any[] = [];
@@ -75,7 +83,7 @@ export class AdminConfig implements OnInit {
 
     this.isSaving = false;
     if (error) {
-      alert('Error al guardar cambios: ' + error.message);
+      await this.abrirDialogo('Error', 'Error al guardar cambios: ' + error.message, 'Entendido');
     } else {
       this.mostrarFeedback('Cambios guardados exitosamente');
     }
@@ -87,7 +95,11 @@ export class AdminConfig implements OnInit {
 
     const { email, nombre, rol } = this.personalForm.value;
 
-    alert(`Nota técnica: Para producción, se enviará una invitación por correo a ${email}. El perfil se creará automáticamente cuando acepte.`);
+    await this.abrirDialogo(
+      'Invitación Enviada',
+      `Nota técnica: Para producción, se enviará una invitación por correo a ${email}. El perfil se creará automáticamente cuando acepte.`,
+      'Entendido'
+    );
 
     this.personalForm.reset({ rol: 'ENCARGADO' });
     this.isSaving = false;
@@ -107,7 +119,7 @@ export class AdminConfig implements OnInit {
 
     this.isSaving = false;
     if (error) {
-      alert('Error al actualizar el personal: ' + error.message);
+      await this.abrirDialogo('Error', 'Error al actualizar el personal: ' + error.message, 'Entendido');
     } else {
       this.mostrarFeedback('cambios realizados correctamente');
     }
@@ -116,5 +128,26 @@ export class AdminConfig implements OnInit {
   private mostrarFeedback(msg: string) {
     this.mensajeFeedback = msg;
     setTimeout(() => this.mensajeFeedback = '', 4000);
+  }
+
+  // DIALOGO CUSTOM
+  abrirDialogo(titulo: string, mensaje: string, btnPrimario: string = 'Aceptar', btnSecundario: string = ''): Promise<boolean> {
+    this.dialogTitle = titulo;
+    this.dialogMessage = mensaje;
+    this.dialogPrimaryBtn = btnPrimario;
+    this.dialogSecondaryBtn = btnSecundario;
+    this.showConfirmDialog = true;
+    
+    return new Promise((resolve) => {
+      this.dialogResolver = resolve;
+    });
+  }
+
+  cerrarDialogo(resultado: boolean) {
+    this.showConfirmDialog = false;
+    if (this.dialogResolver) {
+      this.dialogResolver(resultado);
+      this.dialogResolver = undefined;
+    }
   }
 }

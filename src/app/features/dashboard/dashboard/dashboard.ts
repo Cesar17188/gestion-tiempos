@@ -74,6 +74,19 @@ export class Dashboard implements OnInit, OnDestroy {
   private timerSubscription?: Subscription;
   private realtimeChannel: any;
 
+  // Variables para Toast
+  showToast = false;
+  toastMessage = '';
+  toastType: 'success' | 'error' = 'success';
+
+  // Variables para Dialog Modal
+  showConfirmDialog = false;
+  dialogTitle = '';
+  dialogMessage = '';
+  dialogPrimaryBtn = 'Aceptar';
+  dialogSecondaryBtn = 'Cancelar';
+  private dialogResolver?: (value: boolean) => void;
+
   async ngOnInit() {
     if (isPlatformBrowser(this.platformId)) {
       await this.verificarPermisos();
@@ -147,6 +160,41 @@ export class Dashboard implements OnInit, OnDestroy {
     } finally {
       this.cdr.detectChanges(); // Informamos a Angular que la variable userGreeting ha cambiado
     }
+  }
+
+  // MOSTRAR TOAST
+  mostrarToast(mensaje: string, tipo: 'success' | 'error' = 'success') {
+    this.toastMessage = mensaje;
+    this.toastType = tipo;
+    this.showToast = true;
+    setTimeout(() => {
+      this.showToast = false;
+      this.cdr.detectChanges();
+    }, 3000);
+    this.cdr.detectChanges();
+  }
+
+  // DIALOGO CONFIRMACIÓN CUSTOM
+  abrirDialogo(titulo: string, mensaje: string, btnPrimario: string = 'Aceptar', btnSecundario: string = 'Cancelar'): Promise<boolean> {
+    this.dialogTitle = titulo;
+    this.dialogMessage = mensaje;
+    this.dialogPrimaryBtn = btnPrimario;
+    this.dialogSecondaryBtn = btnSecundario;
+    this.showConfirmDialog = true;
+    this.cdr.detectChanges();
+    
+    return new Promise((resolve) => {
+      this.dialogResolver = resolve;
+    });
+  }
+
+  cerrarDialogo(resultado: boolean) {
+    this.showConfirmDialog = false;
+    if (this.dialogResolver) {
+      this.dialogResolver(resultado);
+      this.dialogResolver = undefined;
+    }
+    this.cdr.detectChanges();
   }
 
   // CERRAR SESIÓN
@@ -257,7 +305,7 @@ export class Dashboard implements OnInit, OnDestroy {
 
       if (fueraDeHorario) {
         this.cerrandoSesion = true;
-        alert('Tu turno de trabajo ha finalizado. La sesión se cerrará automáticamente.');
+        this.mostrarToast('Tu turno de trabajo ha finalizado. La sesión se cerrará.', 'error');
         this.cerrarSesion();
         return; // Detenemos la actualización porque se va a cerrar sesión
       }
@@ -357,7 +405,12 @@ export class Dashboard implements OnInit, OnDestroy {
 
   // FINALIZAR SESIÓN Y OPCIONALMENTE REVERTIR TIEMPO EXTRA
   async retirarSesion(sesion: SesionJuego) {
-    const confirmarFinalizar = confirm(`¿Estás seguro de finalizar la sesión y retirar a ${sesion.nombreNino}?`);
+    const confirmarFinalizar = await this.abrirDialogo(
+      'Finalizar Sesión',
+      `¿Estás seguro de finalizar la sesión y retirar a ${sesion.nombreNino}?`,
+      'Sí, Finalizar',
+      'Cancelar'
+    );
     if (!confirmarFinalizar) return;
 
     let nuevosMinutosExtra = sesion.minutosExtra;
@@ -365,7 +418,12 @@ export class Dashboard implements OnInit, OnDestroy {
     let nuevaSalidaEstimada = sesion.horaSalidaEstimada;
 
     if (sesion.minutosExtra > 0) {
-      const revertir = confirm(`¿Se agregaron los últimos 30 minutos por equivocación?\n\nSi haces clic en "Aceptar", se restarán 30 min y $${this.precioPaqueteExtra} del cobro antes de finalizar.\nSi haces clic en "Cancelar", se finalizará cobrando el total actual.`);
+      const revertir = await this.abrirDialogo(
+        'Tiempo Extra Agregado',
+        `¿Se agregaron los últimos 30 minutos por equivocación?\n\nSi haces clic en "Revertir y Finalizar", se restarán 30 min y $${this.precioPaqueteExtra} del cobro antes de finalizar.\n\nSi haces clic en "Cobrar Total", se finalizará cobrando el total actual.`,
+        'Revertir y Finalizar',
+        'Cobrar Total'
+      );
       if (revertir) {
         nuevosMinutosExtra = Math.max(0, sesion.minutosExtra - 30);
         nuevoCostoExtra = Math.max(0, sesion.costoExtra - this.precioPaqueteExtra);
@@ -384,9 +442,10 @@ export class Dashboard implements OnInit, OnDestroy {
 
     if (error) {
       console.error('Error al finalizar sesión:', error);
-      alert('Hubo un error al intentar finalizar la sesión.');
+      this.mostrarToast('Hubo un error al intentar finalizar la sesión.', 'error');
     } else {
       console.log('Sesión finalizada exitosamente.');
+      this.mostrarToast('Sesión finalizada exitosamente.', 'success');
       this.cargarSesionesActivas();
     }
   }
@@ -409,7 +468,7 @@ export class Dashboard implements OnInit, OnDestroy {
 
     if (error) {
       console.error('Error al agregar 30 minutos:', error);
-      alert('Hubo un error al intentar agregar 30 minutos. Por favor, intenta de nuevo.');
+      this.mostrarToast('Hubo un error al intentar agregar 30 minutos.', 'error');
     } else {
       console.log('Se agregaron 30 minutos exitosamente a la sesión.');
       // Update local state temporarily so UI is instantly updated, real-time sync will overwrite it
@@ -438,7 +497,7 @@ export class Dashboard implements OnInit, OnDestroy {
 
     if (error) {
       console.error('Error al guardar tipología:', error);
-      alert('Hubo un error al guardar la tipología del cliente.');
+      this.mostrarToast('Hubo un error al guardar la tipología del cliente.', 'error');
     } else {
       console.log('Tipología guardada:', tipologia);
     }
