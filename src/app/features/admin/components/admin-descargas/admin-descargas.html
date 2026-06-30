@@ -74,6 +74,7 @@
                         <th class="px-4 py-3">Parentesco</th>
                         <th class="px-4 py-3">Observaciones</th>
                         <th class="px-4 py-3">Tipología</th>
+                        <th class="px-4 py-3">Observaciones Tipología</th>
                         <th class="px-4 py-3">Registrado Por</th>
                         <th class="px-4 py-3 text-center">Total Recaudado</th>
                         <th class="px-4 py-3">Factura SRI</th>
@@ -92,6 +93,7 @@
                         <td class="px-4 py-3 text-gray-600">{{ fila.Parentesco }}</td>
                         <td class="px-4 py-3 text-gray-500 max-w-xs truncate" [title]="fila.Observaciones">{{ fila.Observaciones || '-' }}</td>
                         <td class="px-4 py-3 font-medium text-indigo-600">{{ fila.Tipologia }}</td>
+                        <td class="px-4 py-3 text-gray-500 max-w-xs truncate" [title]="fila.Observaciones_Tipologia">{{ fila.Observaciones_Tipologia }}</td>
                         <td class="px-4 py-3">{{ fila.Registrado_Por }}</td>
                         <td class="px-4 py-3 text-center font-bold text-emerald-600">${{ fila.Total_Pagado |
                             number:'1.2-2' }}</td>

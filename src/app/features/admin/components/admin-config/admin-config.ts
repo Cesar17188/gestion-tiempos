@@ -32,7 +32,7 @@ export class AdminConfig implements OnInit {
     this.configForm = this.fb.group({
       precio_base: [0, [Validators.required, Validators.min(0)]],
       minutos_base: [30, [Validators.required, Validators.min(1)]],
-      precio_minuto_extra: [0, [Validators.required, Validators.min(0)]],
+      precio_minuto_extra: [3, [Validators.required, Validators.min(0)]],
       msg_bienvenida: ['', Validators.required],
       msg_advertencia_5min: ['', Validators.required],
       msg_tiempo_cumplido: ['', Validators.required]

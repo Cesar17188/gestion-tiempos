@@ -26,6 +26,7 @@ export interface SesionJuego {
   progresoColor?: string;
   oculta?: boolean;
   tipologia?: string;
+  observacionesTipologia?: string;
 }
 
 @Component({
@@ -69,6 +70,7 @@ export class Dashboard implements OnInit, OnDestroy {
   horaEntrada?: string;
   horaSalida?: string;
   cerrandoSesion: boolean = false;
+  precioPaqueteExtra: number = 3; // Valor por defecto
   private timerSubscription?: Subscription;
   private realtimeChannel: any;
 
@@ -76,6 +78,7 @@ export class Dashboard implements OnInit, OnDestroy {
     if (isPlatformBrowser(this.platformId)) {
       await this.verificarPermisos();
       await this.establecerSaludoPorRol();
+      await this.cargarConfiguracion();
       await this.cargarSesionesActivas();
       this.cdr.detectChanges(); // Forzamos actualización inicial al terminar la carga
 
@@ -91,6 +94,17 @@ export class Dashboard implements OnInit, OnDestroy {
     // La forma correcta de apagar el canal en Supabase v2 es directamente desde el cliente:
     if (this.realtimeChannel) {
       this.supabaseService.supabase.removeChannel(this.realtimeChannel);
+    }
+  }
+
+  async cargarConfiguracion() {
+    try {
+      const { data } = await this.supabaseService.db('configuracion_sistema').select('precio_minuto_extra').eq('id', 1).single();
+      if (data && data.precio_minuto_extra !== undefined) {
+        this.precioPaqueteExtra = data.precio_minuto_extra;
+      }
+    } catch (e) {
+      console.error('Error al cargar configuración:', e);
     }
   }
 
@@ -159,6 +173,7 @@ export class Dashboard implements OnInit, OnDestroy {
         costo_extra,
         adultos_adicionales,
         tipologia,
+        observaciones_tipologia,
         ninos (
           nombres_apellidos,
           tutores (
@@ -194,7 +209,8 @@ export class Dashboard implements OnInit, OnDestroy {
         adultosAdicionales: item.adultos_adicionales || 0,
         extensionAplicada: (item.minutos_extra || 0) > 0,
         costoTotal: (item.costo_base || 30) + (item.costo_extra || 0),
-        tipologia: item.tipologia || ''
+        tipologia: item.tipologia || '',
+        observacionesTipologia: item.observaciones_tipologia || ''
       }));
 
       this.actualizarTiempos(); // Calculamos el tiempo inmediatamente
@@ -339,17 +355,48 @@ export class Dashboard implements OnInit, OnDestroy {
     }
   }
 
-  // 5. AGREGAR 30 MINUTOS A LA SESIÓN
-  async agregarMediaHora(sesion: SesionJuego) {
-    if (sesion.extensionAplicada) {
-      alert('Ya se ha agregado tiempo extra a esta sesión. Solo se permite una vez.');
-      return;
+  // FINALIZAR SESIÓN Y OPCIONALMENTE REVERTIR TIEMPO EXTRA
+  async retirarSesion(sesion: SesionJuego) {
+    const confirmarFinalizar = confirm(`¿Estás seguro de finalizar la sesión y retirar a ${sesion.nombreNino}?`);
+    if (!confirmarFinalizar) return;
+
+    let nuevosMinutosExtra = sesion.minutosExtra;
+    let nuevoCostoExtra = sesion.costoExtra;
+    let nuevaSalidaEstimada = sesion.horaSalidaEstimada;
+
+    if (sesion.minutosExtra > 0) {
+      const revertir = confirm(`¿Se agregaron los últimos 30 minutos por equivocación?\n\nSi haces clic en "Aceptar", se restarán 30 min y $${this.precioPaqueteExtra} del cobro antes de finalizar.\nSi haces clic en "Cancelar", se finalizará cobrando el total actual.`);
+      if (revertir) {
+        nuevosMinutosExtra = Math.max(0, sesion.minutosExtra - 30);
+        nuevoCostoExtra = Math.max(0, sesion.costoExtra - this.precioPaqueteExtra);
+        nuevaSalidaEstimada = new Date(sesion.horaSalidaEstimada.getTime() - 30 * 60000);
+      }
     }
 
+    const { error } = await this.supabaseService.db('sesiones_juego')
+      .update({
+        estado: 'FINALIZADO',
+        minutos_extra: nuevosMinutosExtra,
+        costo_extra: nuevoCostoExtra,
+        salida_estimada_at: nuevaSalidaEstimada.toISOString()
+      })
+      .eq('id', sesion.id);
+
+    if (error) {
+      console.error('Error al finalizar sesión:', error);
+      alert('Hubo un error al intentar finalizar la sesión.');
+    } else {
+      console.log('Sesión finalizada exitosamente.');
+      this.cargarSesionesActivas();
+    }
+  }
+
+  // 5. AGREGAR 30 MINUTOS A LA SESIÓN
+  async agregarMediaHora(sesion: SesionJuego) {
     // Calculamos la nueva fecha de salida estimada sumando 30 minutos (30 * 60000 milisegundos)
     const nuevaSalidaEstimada = new Date(sesion.horaSalidaEstimada.getTime() + 30 * 60000);
     const nuevosMinutosExtra = sesion.minutosExtra + 30;
-    const nuevoCostoExtra = sesion.costoExtra + 3; // Agrega $3 para que de $7 pase a $10
+    const nuevoCostoExtra = sesion.costoExtra + this.precioPaqueteExtra;
 
     const { error } = await this.supabaseService.db('sesiones_juego')
       .update({
@@ -394,6 +441,24 @@ export class Dashboard implements OnInit, OnDestroy {
       alert('Hubo un error al guardar la tipología del cliente.');
     } else {
       console.log('Tipología guardada:', tipologia);
+    }
+  }
+
+  // GUARDAR OBSERVACIONES TIPOLOGÍA
+  async guardarObservacionesTipologia(sesion: SesionJuego, event: Event) {
+    const inputElement = event.target as HTMLInputElement | HTMLTextAreaElement;
+    const observaciones = inputElement.value;
+
+    sesion.observacionesTipologia = observaciones;
+
+    const { error } = await this.supabaseService.db('sesiones_juego')
+      .update({ observaciones_tipologia: observaciones })
+      .eq('id', sesion.id);
+
+    if (error) {
+      console.error('Error al guardar observaciones de tipología:', error);
+    } else {
+      console.log('Observaciones de tipología guardadas:', observaciones);
     }
   }
 

@@ -13,12 +13,12 @@ export class Splash implements OnInit {
 
   // Construimos la URL pública dinámica usando tu variable de entorno
   // Formato de Supabase: [URL_PROYECTO]/storage/v1/object/public/[BUCKET]/[ARCHIVO]
-  public gifUrl: string = `${environment.supabaseUrl}/storage/v1/object/public/general/introFinal.gif`;
+  public gifUrl: string = `${environment.supabaseUrl}/storage/v1/object/public/general/Login.gif`;
 
   ngOnInit() {
     // Temporizador: 3500 milisegundos = 3.5 segundos
     setTimeout(() => {
       this.router.navigate(['/login']);
-    }, 5000);
+    }, 6000);
   }
 }

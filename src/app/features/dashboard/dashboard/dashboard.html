@@ -132,6 +132,13 @@
               <option value="Familia Moderna">3. Familia Moderna</option>
               <option value="Cuidadora del Desarrollo">4. Cuidadora del Desarrollo</option>
             </select>
+
+            <label style="display: block; font-size: 0.85rem; font-weight: 600; color: #64748b; margin-top: 1rem; margin-bottom: 0.5rem;">
+              Observaciones de tipología:
+            </label>
+            <textarea (blur)="guardarObservacionesTipologia(sesion, $event)" [value]="sesion.observacionesTipologia || ''"
+                      placeholder="Ej. Vino acompañada de varias amigas..."
+                      style="width: 100%; padding: 0.5rem 0.75rem; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 0.9rem; background-color: white; outline: none; color: #334155; resize: vertical; min-height: 60px;"></textarea>
           </div>
           }
         </div>
@@ -145,14 +152,14 @@
             Avisar
           </button>
           <button (click)="agregarMediaHora(sesion)" class="btn btn-add-time" title="Agregar 30 minutos extras"
-            [disabled]="sesion.extensionAplicada"
-            [ngStyle]="{'opacity': sesion.extensionAplicada ? '0.5' : '1', 'cursor': sesion.extensionAplicada ? 'not-allowed' : 'pointer'}">
+            [disabled]="sesion.estadoAlerta !== 'expirado'"
+            [ngStyle]="{'opacity': sesion.estadoAlerta !== 'expirado' ? '0.5' : '1', 'cursor': sesion.estadoAlerta !== 'expirado' ? 'not-allowed' : 'pointer'}">
             <svg class="icon-small" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
             </svg>
             +30 min
           </button>
-          <button class="btn btn-checkout" title="Finalizar Sesión">
+          <button (click)="retirarSesion(sesion)" class="btn btn-checkout" title="Finalizar Sesión">
             Retirar
           </button>
         </div>
