@@ -135,11 +135,11 @@
                 <!-- Resultados de Búsqueda Dropdown -->
                 @if (resultadosBusquedaNinos[i] && resultadosBusquedaNinos[i].length > 0) {
                   <ul class="mt-2 border border-indigo-100 rounded-xl bg-white shadow-lg overflow-hidden max-h-60 overflow-y-auto relative z-10 divide-y divide-gray-50">
-                    @for (nino of resultadosBusquedaNinos[i]; track nino.id) {
+                    @for (nino of resultadosBusquedaNinos[i]; track $index) {
                       <li (click)="seleccionarNino(i, nino)" class="px-4 py-3 hover:bg-indigo-50 cursor-pointer transition-colors group">
                         <div class="font-bold text-gray-800 text-sm group-hover:text-indigo-700">{{ nino.nombres_apellidos }}</div>
                         <div class="text-xs text-gray-500 mt-1 flex justify-between">
-                          <span>Tutor: <span class="font-medium">{{ nino.tutores?.nombres_apellidos || 'Desconocido' }}</span></span>
+                          <span>Tutor: <span class="font-medium">{{ nino.tutorSeleccionado ? nino.tutorSeleccionado.nombres_apellidos : 'Desconocido' }}</span></span>
                           <span class="text-gray-400">{{ nino.fecha_nacimiento ? (nino.fecha_nacimiento | slice:0:10) : 'Sin fecha' }}</span>
                         </div>
                       </li>

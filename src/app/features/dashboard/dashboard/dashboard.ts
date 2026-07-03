@@ -240,12 +240,16 @@ export class Dashboard implements OnInit, OnDestroy {
 
     // Mapeamos los datos de Supabase a nuestra interfaz visual de Angular
     if (data) {
-      this.sesiones = data.map((item: any) => ({
-        id: item.id,
-        nombreNino: item.ninos?.nombres_apellidos || 'Desconocido',
-        nombreTutor: item.ninos?.tutores?.nombres_apellidos || 'Desconocido',
-        parentescoTutor: item.ninos?.tutores?.parentesco || '',
-        whatsapp: item.ninos?.tutores?.whatsapp || '',
+      this.sesiones = data.map((item: any) => {
+        const tutoresArray = item.ninos?.tutores;
+        const ultimoTutor = (Array.isArray(tutoresArray) && tutoresArray.length > 0) ? tutoresArray[tutoresArray.length - 1] : tutoresArray;
+        
+        return {
+          id: item.id,
+          nombreNino: item.ninos?.nombres_apellidos || 'Desconocido',
+          nombreTutor: ultimoTutor?.nombres_apellidos || 'Desconocido',
+          parentescoTutor: ultimoTutor?.parentesco || '',
+          whatsapp: ultimoTutor?.whatsapp || '',
         horaIngreso: new Date(item.ingreso_at),
         horaSalidaEstimada: new Date(item.salida_estimada_at),
         minutosRestantes: 0,
@@ -259,7 +263,8 @@ export class Dashboard implements OnInit, OnDestroy {
         costoTotal: (item.costo_base || 30) + (item.costo_extra || 0),
         tipologia: item.tipologia || '',
         observacionesTipologia: item.observaciones_tipologia || ''
-      }));
+        };
+      });
 
       this.actualizarTiempos(); // Calculamos el tiempo inmediatamente
       this.cdr.detectChanges(); // Informamos a Angular sobre el cambio de sesiones

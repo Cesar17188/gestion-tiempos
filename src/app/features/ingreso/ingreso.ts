@@ -68,6 +68,7 @@ export class Ingreso {
 
   crearNinoFormGroup(): FormGroup {
     return this.fb.group({
+      ninoId: [null],
       ninoNombre: ['', [Validators.required, Validators.minLength(3)]],
       ninoAlias: [''],
       ninoFechaNacimiento: ['', [Validators.required]],
@@ -128,8 +129,8 @@ export class Ingreso {
 
         // 2. Buscar todos los niños asociados al tutor
         const { data: ninosData, error: ninosError } = await this.supabaseService.db('ninos')
-          .select('*')
-          .eq('tutor_id', tutorData.id)
+          .select('*, ninos_tutores!inner(tutor_id)')
+          .eq('ninos_tutores.tutor_id', tutorData.id)
           .order('id', { ascending: true });
 
         if (ninosData && ninosData.length > 0 && !ninosError) {
@@ -145,6 +146,7 @@ export class Ingreso {
             }
 
             ninoGroup.patchValue({
+              ninoId: nino.id,
               ninoNombre: nino.nombres_apellidos || '',
               ninoAlias: nino.alias || '',
               ninoFechaNacimiento: fechaParsed,
@@ -200,8 +202,29 @@ export class Ingreso {
       if (ninosError) throw ninosError;
 
       if (ninosData && ninosData.length > 0) {
-        this.resultadosBusquedaNinos[index] = ninosData;
-        this.searchNinoMessage = `Se encontraron ${ninosData.length} coincidencia(s). Seleccione uno de la lista.`;
+        let resultadosAplanados: any[] = [];
+        
+        ninosData.forEach((nino: any) => {
+          if (nino.tutores && Array.isArray(nino.tutores) && nino.tutores.length > 0) {
+            nino.tutores.forEach((tutor: any) => {
+              resultadosAplanados.push({
+                ...nino,
+                tutorSeleccionado: tutor
+              });
+            });
+          } else {
+            resultadosAplanados.push({
+              ...nino,
+              tutorSeleccionado: null
+            });
+          }
+        });
+        
+        // Limitar nuevamente a 10 resultados después de aplanar
+        resultadosAplanados = resultadosAplanados.slice(0, 10);
+        
+        this.resultadosBusquedaNinos[index] = resultadosAplanados;
+        this.searchNinoMessage = `Se encontraron ${resultadosAplanados.length} coincidencia(s). Seleccione uno de la lista.`;
       } else {
         this.searchNinoMessage = 'No se encontró ningún niño con ese nombre.';
         setTimeout(() => { this.searchNinoMessage = ''; this.searchingNinoIndex = -1; this.cdr.detectChanges(); }, 4000);
@@ -220,19 +243,21 @@ export class Ingreso {
     this.resultadosBusquedaNinos[index] = []; // Ocultar el dropdown
     this.searchNinoMessage = '';
     
-    if (ninoData.tutores) {
-      const tutorData = ninoData.tutores as any;
+    if (ninoData.tutorSeleccionado) {
+      // Usamos el tutor seleccionado específicamente desde la lista aplanada
+      let tutorData = ninoData.tutorSeleccionado;
       
-      // Autocompletar datos del tutor
-      this.ingresoForm.patchValue({
-        tutorNombre: tutorData.nombres_apellidos || '',
-        tutorCedula: tutorData.cedula || '',
-        tutorAlias: tutorData.alias || '',
-        tutorParentesco: tutorData.parentesco || '',
-        tutorCorreo: tutorData.correo || '',
-        tutorContactoAdicional: tutorData.contacto_adicional_nombre || '',
-        tutorWhatsapp: tutorData.whatsapp || ''
-      });
+      if (tutorData) {
+        // Autocompletar datos del tutor
+        this.ingresoForm.patchValue({
+          tutorNombre: tutorData.nombres_apellidos || '',
+          tutorCedula: tutorData.cedula || '',
+          tutorAlias: tutorData.alias || '',
+          tutorParentesco: tutorData.parentesco || '',
+          tutorCorreo: tutorData.correo || '',
+          tutorContactoAdicional: tutorData.contacto_adicional_nombre || '',
+          tutorWhatsapp: tutorData.whatsapp || ''
+        });
 
       // Buscar todos los niños asociados al tutor
       try {
@@ -240,8 +265,8 @@ export class Ingreso {
         this.cdr.detectChanges();
         
         const { data: todosNinosData, error: todosNinosError } = await this.supabaseService.db('ninos')
-          .select('*')
-          .eq('tutor_id', tutorData.id)
+          .select('*, ninos_tutores!inner(tutor_id)')
+          .eq('ninos_tutores.tutor_id', tutorData.id)
           .order('id', { ascending: true });
 
         if (todosNinosData && todosNinosData.length > 0 && !todosNinosError) {
@@ -253,6 +278,7 @@ export class Ingreso {
               fechaParsed = nino.fecha_nacimiento.split('T')[0];
             }
             ninoGroup.patchValue({
+              ninoId: nino.id,
               ninoNombre: nino.nombres_apellidos || '',
               ninoAlias: nino.alias || '',
               ninoFechaNacimiento: fechaParsed,
@@ -270,6 +296,7 @@ export class Ingreso {
         this.searchingNinoIndex = -1;
         this.cdr.detectChanges();
         setTimeout(() => { this.searchNinoMessage = ''; this.cdr.detectChanges(); }, 4000);
+      }
       }
     }
   }
@@ -331,26 +358,29 @@ export class Ingreso {
 
       // 2. PASO DOS: Para cada niño, insertarlo o actualizarlo, y luego crear su sesión
       for (const nino of values.ninos) {
-        let ninoIdFinal: string | null = null;
+        let ninoIdFinal: string | null = nino.ninoId || null;
 
-        // Verificar si este niño ya existe bajo este tutor (por nombre)
-        const { data: existingNino } = await this.supabaseService.db('ninos')
-          .select('id')
-          .eq('tutor_id', tutorIdFinal)
-          .eq('nombres_apellidos', nino.ninoNombre)
-          .maybeSingle();
+        if (!ninoIdFinal) {
+          // Verificar si este niño ya existe por nombre
+          const { data: existingNino } = await this.supabaseService.db('ninos')
+            .select('id')
+            .eq('nombres_apellidos', nino.ninoNombre)
+            .maybeSingle();
+            
+          if (existingNino) {
+            ninoIdFinal = existingNino.id;
+          }
+        }
 
         const ninoPayload = {
           nombres_apellidos: nino.ninoNombre,
           alias: nino.ninoAlias,
           fecha_nacimiento: nino.ninoFechaNacimiento,
           codigo_especifico: nino.ninoCodigo,
-          notas: nino.ninoNotas,
-          tutor_id: tutorIdFinal
+          notas: nino.ninoNotas
         };
 
-        if (existingNino) {
-          ninoIdFinal = existingNino.id;
+        if (ninoIdFinal) {
           await this.supabaseService.db('ninos').update(ninoPayload).eq('id', ninoIdFinal);
         } else {
           const { data: ninoData, error: ninoError } = await this.supabaseService.db('ninos')
@@ -362,6 +392,20 @@ export class Ingreso {
           if (ninoIdFinal) {
             ninosIdsCreados.push(ninoIdFinal); // Guardar para posible rollback
           }
+        }
+        
+        // --- MANAGE MANY-TO-MANY LINK ---
+        const { data: linkExistente, error: linkError } = await this.supabaseService.db('ninos_tutores')
+          .select('*')
+          .eq('tutor_id', tutorIdFinal)
+          .eq('nino_id', ninoIdFinal)
+          .maybeSingle();
+          
+        if (!linkExistente && !linkError) {
+           await this.supabaseService.db('ninos_tutores').insert({
+             tutor_id: tutorIdFinal,
+             nino_id: ninoIdFinal
+           });
         }
 
         // 3. PASO TRES: Calcular tiempos y abrir la sesión de juego para ESTE niño
