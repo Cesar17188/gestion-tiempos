@@ -6,7 +6,7 @@ Una aplicación web moderna para la gestión y seguimiento del tiempo. Diseñada
 
 - **Autenticación Segura:** Sistema de login y recuperación de contraseñas impulsado por Supabase.
 - **Roles de Usuario:** Diferenciación entre usuarios regulares y administradores con paneles dedicados.
-- **Gestión de Registros (Ingresos):** Interfaz para añadir y visualizar tiempos o ingresos registrados.
+- **Gestión de Registros (Ingresos):** Interfaz para añadir y visualizar tiempos registrados, incluyendo búsquedas inteligentes de usuarios y niños con selectores interactivos que evitan la duplicidad de datos.
 - **Panel de Administración (Dashboard Admin):** Vistas analíticas y de control para la administración (cargado de forma diferida o *Lazy Loaded*).
 - **Perfil de Usuario:** Sección dedicada para que los usuarios configuren y actualicen sus datos.
 - **Server-Side Rendering (SSR):** Optimizado para SEO y cargas iniciales rápidas mediante Angular SSR con Express.
