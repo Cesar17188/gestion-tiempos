@@ -113,7 +113,7 @@
 
               <div>
                 <label class="block text-sm font-semibold text-gray-700">Nombres y Apellidos</label>
-                <div class="mt-2 flex shadow-sm rounded-xl">
+                <div class="mt-2 flex shadow-sm rounded-xl relative">
                   <input type="text" formControlName="ninoNombre"
                          class="flex-1 block w-full px-4 py-3 border border-gray-300 rounded-l-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
                          [ngClass]="{'border-red-300 bg-red-50': ninoCtrl.get('ninoNombre')?.invalid && ninoCtrl.get('ninoNombre')?.touched}"
@@ -131,8 +131,24 @@
                     }
                   </button>
                 </div>
+                
+                <!-- Resultados de Búsqueda Dropdown -->
+                @if (resultadosBusquedaNinos[i] && resultadosBusquedaNinos[i].length > 0) {
+                  <ul class="mt-2 border border-indigo-100 rounded-xl bg-white shadow-lg overflow-hidden max-h-60 overflow-y-auto relative z-10 divide-y divide-gray-50">
+                    @for (nino of resultadosBusquedaNinos[i]; track nino.id) {
+                      <li (click)="seleccionarNino(i, nino)" class="px-4 py-3 hover:bg-indigo-50 cursor-pointer transition-colors group">
+                        <div class="font-bold text-gray-800 text-sm group-hover:text-indigo-700">{{ nino.nombres_apellidos }}</div>
+                        <div class="text-xs text-gray-500 mt-1 flex justify-between">
+                          <span>Tutor: <span class="font-medium">{{ nino.tutores?.nombres_apellidos || 'Desconocido' }}</span></span>
+                          <span class="text-gray-400">{{ nino.fecha_nacimiento ? (nino.fecha_nacimiento | slice:0:10) : 'Sin fecha' }}</span>
+                        </div>
+                      </li>
+                    }
+                  </ul>
+                }
+
                 @if (searchNinoMessage && searchingNinoIndex === i) {
-                  <p class="mt-1.5 text-xs font-medium" [ngClass]="{'text-green-600': searchNinoMessage.includes('exitosamente'), 'text-amber-600': searchNinoMessage.includes('No se encontró'), 'text-red-600': searchNinoMessage.includes('Error') || searchNinoMessage.includes('Ingrese')}">{{ searchNinoMessage }}</p>
+                  <p class="mt-1.5 text-xs font-medium" [ngClass]="{'text-green-600': searchNinoMessage.includes('exitosamente'), 'text-amber-600': searchNinoMessage.includes('No se encontró'), 'text-red-600': searchNinoMessage.includes('Error') || searchNinoMessage.includes('Ingrese'), 'text-blue-600': searchNinoMessage.includes('coincidencia')}">{{ searchNinoMessage }}</p>
                 }
               </div>
 

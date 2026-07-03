@@ -41,6 +41,7 @@ export class Ingreso {
   isSearchingNino = false;
   searchNinoMessage = '';
   searchingNinoIndex = -1;
+  resultadosBusquedaNinos: { [index: number]: any[] } = {};
 
   // Estructura del formulario con validaciones requeridas
   ingresoForm: FormGroup = this.fb.group({
@@ -184,35 +185,60 @@ export class Ingreso {
     this.isSearchingNino = true;
     this.searchingNinoIndex = index;
     this.searchNinoMessage = '';
+    this.resultadosBusquedaNinos[index] = [];
     this.cdr.detectChanges();
 
     const nombre = ninoControl.value.trim();
 
     try {
-      // 1. Buscar Niño con su tutor
+      // 1. Buscar Niños con ese nombre (limitamos a 10 resultados para evitar sobrecarga)
       const { data: ninosData, error: ninosError } = await this.supabaseService.db('ninos')
         .select('*, tutores(*)')
         .ilike('nombres_apellidos', `%${nombre}%`)
-        .limit(1)
-        .maybeSingle();
+        .limit(10);
 
       if (ninosError) throw ninosError;
 
-      if (ninosData && ninosData.tutores) {
-        const tutorData = ninosData.tutores as any;
-        
-        // Autocompletar datos del tutor
-        this.ingresoForm.patchValue({
-          tutorNombre: tutorData.nombres_apellidos || '',
-          tutorCedula: tutorData.cedula || '',
-          tutorAlias: tutorData.alias || '',
-          tutorParentesco: tutorData.parentesco || '',
-          tutorCorreo: tutorData.correo || '',
-          tutorContactoAdicional: tutorData.contacto_adicional_nombre || '',
-          tutorWhatsapp: tutorData.whatsapp || ''
-        });
+      if (ninosData && ninosData.length > 0) {
+        this.resultadosBusquedaNinos[index] = ninosData;
+        this.searchNinoMessage = `Se encontraron ${ninosData.length} coincidencia(s). Seleccione uno de la lista.`;
+      } else {
+        this.searchNinoMessage = 'No se encontró ningún niño con ese nombre.';
+        setTimeout(() => { this.searchNinoMessage = ''; this.searchingNinoIndex = -1; this.cdr.detectChanges(); }, 4000);
+      }
+    } catch (error) {
+      console.error('Error buscando niño:', error);
+      this.searchNinoMessage = 'Error al buscar datos.';
+      setTimeout(() => { this.searchNinoMessage = ''; this.searchingNinoIndex = -1; this.cdr.detectChanges(); }, 4000);
+    } finally {
+      this.isSearchingNino = false;
+      this.cdr.detectChanges();
+    }
+  }
 
-        // 2. Buscar todos los niños asociados al tutor
+  async seleccionarNino(index: number, ninoData: any) {
+    this.resultadosBusquedaNinos[index] = []; // Ocultar el dropdown
+    this.searchNinoMessage = '';
+    
+    if (ninoData.tutores) {
+      const tutorData = ninoData.tutores as any;
+      
+      // Autocompletar datos del tutor
+      this.ingresoForm.patchValue({
+        tutorNombre: tutorData.nombres_apellidos || '',
+        tutorCedula: tutorData.cedula || '',
+        tutorAlias: tutorData.alias || '',
+        tutorParentesco: tutorData.parentesco || '',
+        tutorCorreo: tutorData.correo || '',
+        tutorContactoAdicional: tutorData.contacto_adicional_nombre || '',
+        tutorWhatsapp: tutorData.whatsapp || ''
+      });
+
+      // Buscar todos los niños asociados al tutor
+      try {
+        this.isSearchingNino = true;
+        this.cdr.detectChanges();
+        
         const { data: todosNinosData, error: todosNinosError } = await this.supabaseService.db('ninos')
           .select('*')
           .eq('tutor_id', tutorData.id)
@@ -237,16 +263,14 @@ export class Ingreso {
           });
           this.searchNinoMessage = `Datos del tutor y ${todosNinosData.length} niño(s) cargados exitosamente.`;
         }
-      } else {
-        this.searchNinoMessage = 'No se encontró un niño con ese nombre.';
+      } catch (error) {
+        console.error('Error buscando hermanos:', error);
+      } finally {
+        this.isSearchingNino = false;
+        this.searchingNinoIndex = -1;
+        this.cdr.detectChanges();
+        setTimeout(() => { this.searchNinoMessage = ''; this.cdr.detectChanges(); }, 4000);
       }
-    } catch (error) {
-      console.error('Error buscando niño:', error);
-      this.searchNinoMessage = 'Error al buscar datos.';
-    } finally {
-      this.isSearchingNino = false;
-      this.cdr.detectChanges();
-      setTimeout(() => { this.searchNinoMessage = ''; this.searchingNinoIndex = -1; this.cdr.detectChanges(); }, 4000);
     }
   }
 
