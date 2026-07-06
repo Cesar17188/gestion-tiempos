@@ -86,8 +86,11 @@ export class AdminDescargas implements OnInit {
           edad = Math.abs(ageDate.getUTCFullYear() - 1970).toString();
         }
 
-        const nombreTutor = item.ninos?.tutores?.nombres_apellidos || 'Desconocido';
-        const parentescoTutor = item.ninos?.tutores?.parentesco || 'N/A';
+        const tutoresArray = item.ninos?.tutores;
+        const ultimoTutor = (Array.isArray(tutoresArray) && tutoresArray.length > 0) ? tutoresArray[tutoresArray.length - 1] : tutoresArray;
+
+        const nombreTutor = ultimoTutor?.nombres_apellidos || 'Desconocido';
+        const parentescoTutor = ultimoTutor?.parentesco || 'N/A';
         const observaciones = item.ninos?.notas || '';
 
         return {

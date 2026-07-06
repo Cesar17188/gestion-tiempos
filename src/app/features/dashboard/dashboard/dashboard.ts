@@ -1,6 +1,7 @@
 import { Component, OnInit, OnDestroy, inject, ChangeDetectorRef, PLATFORM_ID } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
+import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { interval, Subscription } from 'rxjs';
 import { trigger, transition, style, animate } from '@angular/animations';
 import { SupabaseService } from '../../../core/services/supabase/supabase';
@@ -8,6 +9,7 @@ import { SupabaseService } from '../../../core/services/supabase/supabase';
 // Interfaz para tipar los datos de la sesión
 export interface SesionJuego {
   id: string;
+  ninoId: string;
   nombreNino: string;
   nombreTutor: string;
   parentescoTutor: string;
@@ -31,7 +33,7 @@ export interface SesionJuego {
 
 @Component({
   selector: 'app-dashboard',
-  imports: [CommonModule, RouterModule],
+  imports: [CommonModule, RouterModule, ReactiveFormsModule],
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.css',
   host: {
@@ -86,6 +88,24 @@ export class Dashboard implements OnInit, OnDestroy {
   dialogPrimaryBtn = 'Aceptar';
   dialogSecondaryBtn = 'Cancelar';
   private dialogResolver?: (value: boolean) => void;
+
+  // Variables para Actualización de Tutor
+  showUpdateTutorDialog = false;
+  selectedSesionForUpdate: SesionJuego | null = null;
+  isSearchingTutor = false;
+  isSavingTutor = false;
+  searchTutorMessage = '';
+
+  private fb = inject(FormBuilder);
+  tutorUpdateForm: FormGroup = this.fb.group({
+    tutorNombre: ['', [Validators.required, Validators.minLength(4)]],
+    tutorCedula: ['', [Validators.required]],
+    tutorAlias: [''],
+    tutorParentesco: ['', [Validators.required]],
+    tutorCorreo: ['', [Validators.email]],
+    tutorContactoAdicional: [''],
+    tutorWhatsapp: ['', [Validators.required, Validators.pattern('^[0-9]{9,15}$')]]
+  });
 
   async ngOnInit() {
     if (isPlatformBrowser(this.platformId)) {
@@ -214,6 +234,7 @@ export class Dashboard implements OnInit, OnDestroy {
     const { data, error } = await this.supabaseService.db('sesiones_juego')
       .select(`
         id,
+        nino_id,
         ingreso_at,
         salida_estimada_at,
         costo_base,
@@ -246,6 +267,7 @@ export class Dashboard implements OnInit, OnDestroy {
         
         return {
           id: item.id,
+          ninoId: item.nino_id,
           nombreNino: item.ninos?.nombres_apellidos || 'Desconocido',
           nombreTutor: ultimoTutor?.nombres_apellidos || 'Desconocido',
           parentescoTutor: ultimoTutor?.parentesco || '',
@@ -408,50 +430,72 @@ export class Dashboard implements OnInit, OnDestroy {
     }
   }
 
-  // FINALIZAR SESIÓN Y OPCIONALMENTE REVERTIR TIEMPO EXTRA
+  // FINALIZAR SESIÓN O RESTAR TIEMPO
   async retirarSesion(sesion: SesionJuego) {
-    const confirmarFinalizar = await this.abrirDialogo(
-      'Finalizar Sesión',
-      `¿Estás seguro de finalizar la sesión y retirar a ${sesion.nombreNino}?`,
-      'Sí, Finalizar',
-      'Cancelar'
-    );
-    if (!confirmarFinalizar) return;
-
-    let nuevosMinutosExtra = sesion.minutosExtra;
-    let nuevoCostoExtra = sesion.costoExtra;
-    let nuevaSalidaEstimada = sesion.horaSalidaEstimada;
-
-    if (sesion.minutosExtra > 0) {
-      const revertir = await this.abrirDialogo(
-        'Tiempo Extra Agregado',
-        `¿Se agregaron los últimos 30 minutos por equivocación?\n\nSi haces clic en "Revertir y Finalizar", se restarán 30 min y $${this.precioPaqueteExtra} del cobro antes de finalizar.\n\nSi haces clic en "Cobrar Total", se finalizará cobrando el total actual.`,
-        'Revertir y Finalizar',
-        'Cobrar Total'
-      );
-      if (revertir) {
+    if (sesion.minutosRestantes >= 30) {
+      // 1. Si hay 30 minutos o más, se restan 30 minutos
+      let nuevosMinutosExtra = sesion.minutosExtra;
+      let nuevoCostoExtra = sesion.costoExtra;
+      let nuevoCostoBase = sesion.costoBase;
+      
+      // Revertimos también los costos extra si existen para mantener consistencia
+      if (sesion.minutosExtra > 0) {
         nuevosMinutosExtra = Math.max(0, sesion.minutosExtra - 30);
         nuevoCostoExtra = Math.max(0, sesion.costoExtra - this.precioPaqueteExtra);
-        nuevaSalidaEstimada = new Date(sesion.horaSalidaEstimada.getTime() - 30 * 60000);
+      } else if (sesion.costoBase === 10) {
+        // Si no hay tiempo extra pero el costo base es de 60 minutos ($10), lo reducimos al de 30 minutos ($7)
+        nuevoCostoBase = 7;
       }
-    }
 
-    const { error } = await this.supabaseService.db('sesiones_juego')
-      .update({
-        estado: 'FINALIZADO',
-        minutos_extra: nuevosMinutosExtra,
-        costo_extra: nuevoCostoExtra,
-        salida_estimada_at: nuevaSalidaEstimada.toISOString()
-      })
-      .eq('id', sesion.id);
+      const nuevaSalidaEstimada = new Date(sesion.horaSalidaEstimada.getTime() - 30 * 60000);
+      
+      const { error } = await this.supabaseService.db('sesiones_juego')
+        .update({
+          salida_estimada_at: nuevaSalidaEstimada.toISOString(),
+          minutos_extra: nuevosMinutosExtra,
+          costo_extra: nuevoCostoExtra,
+          costo_base: nuevoCostoBase
+        })
+        .eq('id', sesion.id);
 
-    if (error) {
-      console.error('Error al finalizar sesión:', error);
-      this.mostrarToast('Hubo un error al intentar finalizar la sesión.', 'error');
+      if (error) {
+        console.error('Error al restar 30 minutos:', error);
+        this.mostrarToast('Hubo un error al intentar restar el tiempo.', 'error');
+      } else {
+        sesion.horaSalidaEstimada = nuevaSalidaEstimada;
+        sesion.minutosExtra = nuevosMinutosExtra;
+        sesion.costoExtra = nuevoCostoExtra;
+        sesion.costoBase = nuevoCostoBase;
+        sesion.costoTotal = sesion.costoBase + sesion.costoExtra;
+        this.actualizarTiempos();
+        this.mostrarToast('Se han restado 30 minutos de la sesión.', 'success');
+      }
     } else {
-      console.log('Sesión finalizada exitosamente.');
-      this.mostrarToast('Sesión finalizada exitosamente.', 'success');
-      this.cargarSesionesActivas();
+      // 2. Si hay menos de 30 minutos, se pregunta y se termina la sesión (tiempo a 0)
+      const confirmarFinalizar = await this.abrirDialogo(
+        'Finalizar Sesión',
+        `¿Estás seguro de finalizar la sesión y retirar a ${sesion.nombreNino}?`,
+        'Sí, Finalizar',
+        'Cancelar'
+      );
+      if (!confirmarFinalizar) return;
+
+      const nuevaSalidaEstimada = new Date(); // El tiempo se va a 0 (ahora)
+
+      const { error } = await this.supabaseService.db('sesiones_juego')
+        .update({
+          salida_estimada_at: nuevaSalidaEstimada.toISOString()
+        })
+        .eq('id', sesion.id);
+
+      if (error) {
+        console.error('Error al finalizar sesión:', error);
+        this.mostrarToast('Hubo un error al intentar finalizar la sesión.', 'error');
+      } else {
+        sesion.horaSalidaEstimada = nuevaSalidaEstimada;
+        this.actualizarTiempos(); // Se encarga de marcar como expirado y finalizar en BD
+        this.mostrarToast('Sesión finalizada exitosamente.', 'success');
+      }
     }
   }
 
@@ -523,6 +567,136 @@ export class Dashboard implements OnInit, OnDestroy {
       console.error('Error al guardar observaciones de tipología:', error);
     } else {
       console.log('Observaciones de tipología guardadas:', observaciones);
+    }
+  }
+
+  // --- ACTUALIZACIÓN DE TUTOR ---
+  abrirDialogoActualizarTutor(sesion: SesionJuego) {
+    this.selectedSesionForUpdate = sesion;
+    this.tutorUpdateForm.reset();
+    this.searchTutorMessage = '';
+    this.showUpdateTutorDialog = true;
+  }
+
+  cerrarDialogoActualizarTutor() {
+    this.showUpdateTutorDialog = false;
+    this.selectedSesionForUpdate = null;
+    this.tutorUpdateForm.reset();
+  }
+
+  async buscarPorCedulaUpdate() {
+    const cedulaControl = this.tutorUpdateForm.get('tutorCedula');
+    if (!cedulaControl || !cedulaControl.value || cedulaControl.value.trim() === '') {
+      this.searchTutorMessage = 'Ingrese una cédula para buscar.';
+      this.cdr.detectChanges();
+      setTimeout(() => { this.searchTutorMessage = ''; this.cdr.detectChanges(); }, 3000);
+      return;
+    }
+
+    this.isSearchingTutor = true;
+    this.searchTutorMessage = '';
+    this.cdr.detectChanges();
+
+    const cedula = cedulaControl.value.trim();
+
+    try {
+      const { data: tutorData, error: tutorError } = await this.supabaseService.db('tutores')
+        .select('*')
+        .eq('cedula', cedula)
+        .limit(1)
+        .maybeSingle();
+
+      if (tutorError) throw tutorError;
+
+      if (tutorData) {
+        this.tutorUpdateForm.patchValue({
+          tutorNombre: tutorData.nombres_apellidos || '',
+          tutorAlias: tutorData.alias || '',
+          tutorParentesco: tutorData.parentesco || '',
+          tutorCorreo: tutorData.correo || '',
+          tutorContactoAdicional: tutorData.contacto_adicional_nombre || '',
+          tutorWhatsapp: tutorData.whatsapp || ''
+        });
+        this.searchTutorMessage = 'Datos del responsable cargados exitosamente.';
+      } else {
+        this.searchTutorMessage = 'No se encontró un responsable con esa cédula.';
+      }
+    } catch (error) {
+      console.error('Error buscando cédula:', error);
+      this.searchTutorMessage = 'Error al buscar datos.';
+    } finally {
+      this.isSearchingTutor = false;
+      this.cdr.detectChanges();
+      setTimeout(() => { this.searchTutorMessage = ''; this.cdr.detectChanges(); }, 3000);
+    }
+  }
+
+  async guardarNuevoTutor() {
+    if (this.tutorUpdateForm.invalid || !this.selectedSesionForUpdate) {
+      this.tutorUpdateForm.markAllAsTouched();
+      return;
+    }
+
+    this.isSavingTutor = true;
+    const values = this.tutorUpdateForm.value;
+    const ninoId = this.selectedSesionForUpdate.ninoId;
+    let tutorIdFinal: string | null = null;
+
+    try {
+      // 1. Buscar si el tutor ya existe o crearlo
+      const { data: existingTutor } = await this.supabaseService.db('tutores')
+        .select('id')
+        .eq('cedula', values.tutorCedula)
+        .maybeSingle();
+
+      const tutorPayload = {
+        nombres_apellidos: values.tutorNombre,
+        cedula: values.tutorCedula,
+        alias: values.tutorAlias,
+        parentesco: values.tutorParentesco,
+        correo: values.tutorCorreo,
+        contacto_adicional_nombre: values.tutorContactoAdicional,
+        whatsapp: values.tutorWhatsapp
+      };
+
+      if (existingTutor) {
+        tutorIdFinal = existingTutor.id;
+        await this.supabaseService.db('tutores').update(tutorPayload).eq('id', tutorIdFinal);
+      } else {
+        const { data: tutorData, error: tutorError } = await this.supabaseService.db('tutores')
+          .insert(tutorPayload)
+          .select('id')
+          .single();
+        if (tutorError) throw new Error(`Error al registrar responsable: ${tutorError.message}`);
+        tutorIdFinal = tutorData.id;
+      }
+
+      // 2. Vincular el tutor al niño
+      const { data: linkExistente, error: linkError } = await this.supabaseService.db('ninos_tutores')
+        .select('*')
+        .eq('tutor_id', tutorIdFinal)
+        .eq('nino_id', ninoId)
+        .maybeSingle();
+        
+      if (!linkExistente && !linkError) {
+         await this.supabaseService.db('ninos_tutores').insert({
+           tutor_id: tutorIdFinal,
+           nino_id: ninoId
+         });
+      }
+
+      this.mostrarToast('Responsable actualizado exitosamente.', 'success');
+      this.cerrarDialogoActualizarTutor();
+      
+      // Forzamos actualización visual de sesiones (aunque realtime debería hacerlo en la app, al actualizar otras tablas no siempre salta el de sesiones)
+      this.cargarSesionesActivas();
+
+    } catch (err: any) {
+      console.error(err);
+      this.mostrarToast(err.message || 'Error al actualizar responsable.', 'error');
+    } finally {
+      this.isSavingTutor = false;
+      this.cdr.detectChanges();
     }
   }
 
