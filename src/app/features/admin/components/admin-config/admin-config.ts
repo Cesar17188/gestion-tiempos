@@ -43,7 +43,8 @@ export class AdminConfig implements OnInit {
       precio_minuto_extra: [3, [Validators.required, Validators.min(0)]],
       msg_bienvenida: ['', Validators.required],
       msg_advertencia_5min: ['', Validators.required],
-      msg_tiempo_cumplido: ['', Validators.required]
+      msg_tiempo_cumplido: ['', Validators.required],
+      titulo_dashboard: ['Panel de Control - Sucursal Norte', Validators.required]
     });
 
     this.personalForm = this.fb.group({

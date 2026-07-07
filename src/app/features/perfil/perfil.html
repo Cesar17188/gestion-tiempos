@@ -50,7 +50,7 @@
                     'bg-purple-100 text-purple-700': datosPerfil?.rol === 'ADMINISTRADOR',
                     'bg-blue-100 text-blue-700': datosPerfil?.rol === 'ENCARGADO' || !datosPerfil?.rol
                   }">
-              {{ datosPerfil?.rol || 'ENCARGADO' }}
+              {{ datosPerfil?.rol === 'ENCARGADO' ? 'ANFITRIONA' : (datosPerfil?.rol || 'ANFITRIONA') }}
             </span>
           </div>
 

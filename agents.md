@@ -39,8 +39,12 @@ El proyecto sigue una estructura orientada a características (Feature-driven ar
 
 ### 3. Integración con Supabase
 - Toda la comunicación con Supabase (Autenticación y Base de Datos) debe encapsularse en los servicios dentro de `core/services/`.
-- No llamar a Supabase directamente desde los componentes.
+- No llamar a Supabase directamente desde los componentes (excepto para prototipado rápido justificado).
 - **Manejo de Búsquedas y Duplicados:** Cuando se realicen búsquedas por texto (ej. `ilike`) que puedan generar múltiples coincidencias o posibles duplicados (como nombres de personas), **no se debe** utilizar `.limit(1)` de forma arbitraria. Se debe devolver una lista limitando los resultados (ej. `.limit(10)`) y delegar a la interfaz de usuario (mediante selectores o dropdowns interactivos) la decisión de seleccionar el registro correcto para evitar sobrescribir o elegir datos erróneos.
+- **Relaciones Muchos a Muchos (Ej. Niños - Tutores):** Cuando se realizan consultas relacionales que devuelven arreglos (como la extracción de tutores desde niños), se debe manejar explícitamente el array (por ejemplo extrayendo el último elemento activo) antes de intentar leer propiedades como `nombres_apellidos`. No asumir que retornará un solo objeto.
+
+### 4. UI y Formularios Reactivos
+- **Formularios Modales In-Place:** Se promueve el uso de diálogos flotantes (modales) con `ReactiveFormsModule` dentro del mismo componente para interacciones rápidas (como actualizar datos de un adulto responsable en una tarjeta), evitando tener que redirigir a nuevas páginas para acciones simples.
 
 ### 4. Estilos y TailwindCSS
 - El proyecto utiliza Tailwind CSS v4. Usar las clases de utilidad provistas por Tailwind directamente en los templates (archivos `.html`).

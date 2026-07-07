@@ -56,13 +56,18 @@
             </div>
         </div>
 
-        <!-- Bloque de Notificaciones de WhatsApp -->
+        <!-- Bloque de Personalización -->
         <div class="pt-4 border-t border-gray-100">
-            <h4 class="text-xs font-bold text-indigo-600 uppercase tracking-wider mb-1">Plantillas de Notificación</h4>
-            <p class="text-xxs text-gray-400 mb-4">Nota: El sistema reemplazará automáticamente la palabra clave con el
-                nombre de cada niño.</p>
+            <h4 class="text-xs font-bold text-indigo-600 uppercase tracking-wider mb-1">Personalización y Notificaciones</h4>
+            <p class="text-xxs text-gray-400 mb-4">Ajustes visuales y textos de WhatsApp (se reemplazará la palabra clave con el
+                nombre de cada niño).</p>
 
             <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-medium text-gray-600">Título del Panel (Dashboard)</label>
+                    <input type="text" formControlName="titulo_dashboard"
+                        class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-xl text-sm" placeholder="Ej. Panel de Control - Sucursal Norte">
+                </div>
                 <div>
                     <label class="block text-xs font-medium text-gray-600">Mensaje de Bienvenida (Ingreso)</label>
                     <textarea rows="2" formControlName="msg_bienvenida"
@@ -113,7 +118,7 @@
                 <label class="block text-xs font-medium text-gray-600">Rol del Sistema</label>
                 <select formControlName="rol"
                     class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-xl text-sm bg-white">
-                    <option value="ENCARGADO">Encargado de Caja</option>
+                    <option value="ENCARGADO">Anfitriona</option>
                     <option value="ADMINISTRADOR">Administrador General</option>
                 </select>
             </div>
@@ -143,7 +148,7 @@
                         <span
                             [ngClass]="{'bg-purple-50 text-purple-600 border-purple-100': perfil.rol === 'ADMINISTRADOR', 'bg-blue-50 text-blue-600 border-blue-100': perfil.rol === 'ENCARGADO'}"
                             class="text-xxs font-bold px-2.5 py-1 rounded-lg border uppercase tracking-wider">
-                            {{ perfil.rol }}
+                            {{ perfil.rol === 'ENCARGADO' ? 'ANFITRIONA' : perfil.rol }}
                         </span>
                     </div>
 

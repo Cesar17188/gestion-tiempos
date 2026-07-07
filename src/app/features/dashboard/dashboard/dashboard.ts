@@ -73,6 +73,7 @@ export class Dashboard implements OnInit, OnDestroy {
   horaSalida?: string;
   cerrandoSesion: boolean = false;
   precioPaqueteExtra: number = 3; // Valor por defecto
+  tituloDashboard: string = 'Panel de Control - Sucursal Norte';
   private timerSubscription?: Subscription;
   private realtimeChannel: any;
 
@@ -132,9 +133,14 @@ export class Dashboard implements OnInit, OnDestroy {
 
   async cargarConfiguracion() {
     try {
-      const { data } = await this.supabaseService.db('configuracion_sistema').select('precio_minuto_extra').eq('id', 1).single();
-      if (data && data.precio_minuto_extra !== undefined) {
-        this.precioPaqueteExtra = data.precio_minuto_extra;
+      const { data } = await this.supabaseService.db('configuracion_sistema').select('precio_minuto_extra, titulo_dashboard').eq('id', 1).single();
+      if (data) {
+        if (data.precio_minuto_extra !== undefined) {
+          this.precioPaqueteExtra = data.precio_minuto_extra;
+        }
+        if (data.titulo_dashboard) {
+          this.tituloDashboard = data.titulo_dashboard;
+        }
       }
     } catch (e) {
       console.error('Error al cargar configuración:', e);
@@ -163,7 +169,7 @@ export class Dashboard implements OnInit, OnDestroy {
           if (rolUsuario === 'ADMINISTRADOR') {
             this.userGreeting = 'Hola, Administrador';
           } else if (rolUsuario === 'ENCARGADO') {
-            this.userGreeting = 'Hola, Encargado';
+            this.userGreeting = 'Hola, Anfitriona';
             if (perfil.hora_entrada && perfil.hora_salida) {
               this.horaEntrada = perfil.hora_entrada;
               this.horaSalida = perfil.hora_salida;

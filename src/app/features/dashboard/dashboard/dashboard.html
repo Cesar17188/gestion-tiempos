@@ -7,7 +7,7 @@
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
             d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
-        <h1>Panel de Control - Sucursal Norte</h1>
+        <h1>{{ tituloDashboard }}</h1>
       </div>
       @if (esAdmin) {
       <button routerLink="/admin" class="btn btn-admin">
@@ -86,8 +86,14 @@
               <h3>{{ sesion.nombreNino }}</h3>
               <p class="text-secondary flex items-center gap-2">
                 <span><strong>Tutor:</strong> {{ sesion.nombreTutor }} - {{ sesion.parentescoTutor }}</span>
-                <button (click)="abrirDialogoActualizarTutor(sesion)" class="text-indigo-500 hover:text-indigo-700 transition-colors p-1 rounded-full hover:bg-indigo-50 focus:outline-none" title="Actualizar Responsable">
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
+                <button (click)="abrirDialogoActualizarTutor(sesion)"
+                  class="text-indigo-500 hover:text-indigo-700 transition-colors p-1 rounded-full hover:bg-indigo-50 focus:outline-none"
+                  title="Actualizar Responsable">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z">
+                    </path>
+                  </svg>
                 </button>
               </p>
             </div>
@@ -139,7 +145,7 @@
 
             <label
               style="display: block; font-size: 0.85rem; font-weight: 600; color: #64748b; margin-top: 1rem; margin-bottom: 0.5rem;">
-              Observaciones de tipología:
+              ¿Qué buscó hoy esta familia? / observaciones
             </label>
             <textarea (blur)="guardarObservacionesTipologia(sesion, $event)"
               [value]="sesion.observacionesTipologia || ''" placeholder="Ej. Vino acompañada de varias amigas..."
@@ -246,9 +252,11 @@
 
   <!-- Update Tutor Dialog Modal -->
   @if (showUpdateTutorDialog && selectedSesionForUpdate) {
-  <div class="fixed inset-0 z-[60] flex items-center justify-center bg-gray-900 bg-opacity-50 backdrop-blur-sm transition-opacity p-4 sm:p-6 overflow-y-auto">
-    <div class="bg-white rounded-2xl shadow-xl max-w-2xl w-full mx-auto overflow-hidden transform transition-all my-auto max-h-[90vh] flex flex-col">
-      
+  <div
+    class="fixed inset-0 z-[60] flex items-center justify-center bg-gray-900 bg-opacity-50 backdrop-blur-sm transition-opacity p-4 sm:p-6 overflow-y-auto">
+    <div
+      class="bg-white rounded-2xl shadow-xl max-w-2xl w-full mx-auto overflow-hidden transform transition-all my-auto max-h-[90vh] flex flex-col">
+
       <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
         <h3 class="text-lg font-bold text-gray-900">Actualizar Responsable</h3>
         <button type="button" (click)="cerrarDialogoActualizarTutor()" class="text-gray-400 hover:text-gray-500">
@@ -260,55 +268,59 @@
       </div>
 
       <div class="p-6 overflow-y-auto flex-1" style="max-height: calc(90vh - 140px);">
-        <p class="text-sm text-gray-600 mb-6">Ingresa los datos del nuevo adulto responsable para <span class="font-bold text-indigo-600">{{ selectedSesionForUpdate.nombreNino }}</span>.</p>
-        
+        <p class="text-sm text-gray-600 mb-6">Ingresa los datos del nuevo adulto responsable para <span
+            class="font-bold text-indigo-600">{{ selectedSesionForUpdate.nombreNino }}</span>.</p>
+
         <form [formGroup]="tutorUpdateForm" (ngSubmit)="guardarNuevoTutor()" class="space-y-5">
           <div>
             <label class="block text-sm font-semibold text-gray-700">Cédula de Identidad</label>
             <div class="mt-2 flex shadow-sm rounded-xl">
               <input type="text" formControlName="tutorCedula"
-                     class="flex-1 block w-full px-4 py-2 border border-gray-300 rounded-l-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
-                     [ngClass]="{'border-red-300 bg-red-50': tutorUpdateForm.get('tutorCedula')?.invalid && tutorUpdateForm.get('tutorCedula')?.touched}"
-                     placeholder="Ej. 1712345678"
-                     (keyup.enter)="buscarPorCedulaUpdate()">
+                class="flex-1 block w-full px-4 py-2 border border-gray-300 rounded-l-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                [ngClass]="{'border-red-300 bg-red-50': tutorUpdateForm.get('tutorCedula')?.invalid && tutorUpdateForm.get('tutorCedula')?.touched}"
+                placeholder="Ej. 1712345678" (keyup.enter)="buscarPorCedulaUpdate()">
               <button type="button" (click)="buscarPorCedulaUpdate()" [disabled]="isSearchingTutor"
-                      class="px-4 py-2 bg-indigo-50 border border-l-0 border-indigo-200 text-indigo-700 font-semibold rounded-r-xl hover:bg-indigo-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors flex items-center justify-center min-w-[90px]">
+                class="px-4 py-2 bg-indigo-50 border border-l-0 border-indigo-200 text-indigo-700 font-semibold rounded-r-xl hover:bg-indigo-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors flex items-center justify-center min-w-[90px]">
                 @if (isSearchingTutor) {
-                  <svg class="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
+                <svg class="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                  </path>
+                </svg>
                 } @else {
-                  Buscar
+                Buscar
                 }
               </button>
             </div>
             @if (searchTutorMessage) {
-              <p class="mt-1.5 text-xs font-medium" [ngClass]="{'text-green-600': searchTutorMessage.includes('exitosamente'), 'text-amber-600': searchTutorMessage.includes('No se encontró'), 'text-red-600': searchTutorMessage.includes('Error') || searchTutorMessage.includes('Ingrese')}">{{ searchTutorMessage }}</p>
+            <p class="mt-1.5 text-xs font-medium"
+              [ngClass]="{'text-green-600': searchTutorMessage.includes('exitosamente'), 'text-amber-600': searchTutorMessage.includes('No se encontró'), 'text-red-600': searchTutorMessage.includes('Error') || searchTutorMessage.includes('Ingrese')}">
+              {{ searchTutorMessage }}</p>
             }
           </div>
 
           <div>
             <label class="block text-sm font-semibold text-gray-700">Nombre Completo</label>
             <input type="text" formControlName="tutorNombre"
-                   class="mt-2 block w-full px-4 py-2 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
-                   [ngClass]="{'border-red-300 bg-red-50': tutorUpdateForm.get('tutorNombre')?.invalid && tutorUpdateForm.get('tutorNombre')?.touched}"
-                   placeholder="Ej. Laura Sánchez">
+              class="mt-2 block w-full px-4 py-2 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+              [ngClass]="{'border-red-300 bg-red-50': tutorUpdateForm.get('tutorNombre')?.invalid && tutorUpdateForm.get('tutorNombre')?.touched}"
+              placeholder="Ej. Laura Sánchez">
           </div>
 
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label class="block text-sm font-semibold text-gray-700">Alias (Apodo)</label>
               <input type="text" formControlName="tutorAlias"
-                     class="mt-2 block w-full px-4 py-2 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
-                     placeholder="Ej. Mamá Laura">
+                class="mt-2 block w-full px-4 py-2 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                placeholder="Ej. Mamá Laura">
             </div>
             <div>
               <label class="block text-sm font-semibold text-gray-700">Parentesco con el niño(a)</label>
               <input type="text" formControlName="tutorParentesco"
-                     class="mt-2 block w-full px-4 py-2 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
-                     [ngClass]="{'border-red-300 bg-red-50': tutorUpdateForm.get('tutorParentesco')?.invalid && tutorUpdateForm.get('tutorParentesco')?.touched}"
-                     placeholder="Ej. Tía, Abuelo...">
+                class="mt-2 block w-full px-4 py-2 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                [ngClass]="{'border-red-300 bg-red-50': tutorUpdateForm.get('tutorParentesco')?.invalid && tutorUpdateForm.get('tutorParentesco')?.touched}"
+                placeholder="Ej. Tía, Abuelo...">
             </div>
           </div>
 
@@ -316,41 +328,46 @@
             <div>
               <label class="block text-sm font-semibold text-gray-700">WhatsApp de Contacto</label>
               <input type="tel" formControlName="tutorWhatsapp"
-                     class="mt-2 block w-full px-4 py-2 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
-                     [ngClass]="{'border-red-300 bg-red-50': tutorUpdateForm.get('tutorWhatsapp')?.invalid && tutorUpdateForm.get('tutorWhatsapp')?.touched}"
-                     placeholder="Ej. 593991234567">
+                class="mt-2 block w-full px-4 py-2 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                [ngClass]="{'border-red-300 bg-red-50': tutorUpdateForm.get('tutorWhatsapp')?.invalid && tutorUpdateForm.get('tutorWhatsapp')?.touched}"
+                placeholder="Ej. 593991234567">
             </div>
             <div>
               <label class="block text-sm font-semibold text-gray-700">Correo Electrónico (Opcional)</label>
               <input type="email" formControlName="tutorCorreo"
-                     class="mt-2 block w-full px-4 py-2 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
-                     [ngClass]="{'border-red-300 bg-red-50': tutorUpdateForm.get('tutorCorreo')?.invalid && tutorUpdateForm.get('tutorCorreo')?.touched}"
-                     placeholder="Ej. laura@correo.com">
+                class="mt-2 block w-full px-4 py-2 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                [ngClass]="{'border-red-300 bg-red-50': tutorUpdateForm.get('tutorCorreo')?.invalid && tutorUpdateForm.get('tutorCorreo')?.touched}"
+                placeholder="Ej. laura@correo.com">
             </div>
           </div>
 
           <div>
             <label class="block text-sm font-semibold text-gray-700">Contacto Adicional (Opcional)</label>
             <input type="text" formControlName="tutorContactoAdicional"
-                   class="mt-2 block w-full px-4 py-2 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
-                   placeholder="Ej. Nombre y número de la madre u otro familiar">
+              class="mt-2 block w-full px-4 py-2 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+              placeholder="Ej. Nombre y número de la madre u otro familiar">
           </div>
         </form>
       </div>
 
       <div class="px-6 py-4 bg-gray-50 border-t border-gray-100 flex flex-col-reverse sm:flex-row sm:justify-end gap-3">
-        <button type="button" (click)="cerrarDialogoActualizarTutor()" class="w-full sm:w-auto px-5 py-2.5 bg-white text-gray-700 border border-gray-300 rounded-xl font-medium hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors">
+        <button type="button" (click)="cerrarDialogoActualizarTutor()"
+          class="w-full sm:w-auto px-5 py-2.5 bg-white text-gray-700 border border-gray-300 rounded-xl font-medium hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors">
           Cancelar
         </button>
-        <button type="button" (click)="guardarNuevoTutor()" [disabled]="isSavingTutor" class="w-full sm:w-auto px-5 py-2.5 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 shadow-sm transition-colors flex items-center justify-center disabled:opacity-50">
+        <button type="button" (click)="guardarNuevoTutor()" [disabled]="isSavingTutor"
+          class="w-full sm:w-auto px-5 py-2.5 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 shadow-sm transition-colors flex items-center justify-center disabled:opacity-50">
           @if (isSavingTutor) {
-            <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-            Guardando...
+          <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none"
+            viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor"
+              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+            </path>
+          </svg>
+          Guardando...
           } @else {
-            Guardar Responsable
+          Guardar Responsable
           }
         </button>
       </div>

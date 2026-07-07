@@ -14,7 +14,7 @@
     <select [(ngModel)]="encargadoSeleccionado" class="filtro-input">
       <option value="TODOS">Todos los colaboradores</option>
       @for (encargado of listaPersonal; track encargado.id) {
-        <option [value]="encargado.id">{{ encargado.nombre }} ({{ encargado.rol }})</option>
+        <option [value]="encargado.id">{{ encargado.nombre }} ({{ encargado.rol === 'ENCARGADO' ? 'ANFITRIONA' : encargado.rol }})</option>
       }
     </select>
   </div>
