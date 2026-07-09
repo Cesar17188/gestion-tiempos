@@ -1,7 +1,7 @@
 name: Despliegue Automatizado a Vercel
 on:
   push:
-    branches: [ main ] # Cambia a 'master' si es el nombre de tu rama principal
+    branches: [ master ] # Cambia a 'master' si es el nombre de tu rama principal
 
 jobs:
   deploy:
