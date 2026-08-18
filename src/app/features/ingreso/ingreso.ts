@@ -43,6 +43,14 @@ export class Ingreso {
   searchingNinoIndex = -1;
   resultadosBusquedaNinos: { [index: number]: any[] } = {};
 
+  // Propiedades para Snackbar de Notificaciones
+  showSnackbar = false;
+  snackbarTitle = '';
+  snackbarMessage = '';
+  snackbarErrors: string[] = [];
+  snackbarType: 'error' | 'warning' | 'info' | 'success' = 'warning';
+  private snackbarTimer?: any;
+
   // Estructura del formulario con validaciones requeridas
   ingresoForm: FormGroup = this.fb.group({
     // Datos del Tutor
@@ -61,6 +69,96 @@ export class Ingreso {
     tiempoMinutos: ['30', [Validators.required]], // Por defecto 30 minutos
     adultosExtra: ['0', [Validators.min(0)]]
   });
+
+  mostrarSnackbar(
+    titulo: string,
+    mensaje: string,
+    errores: string[] = [],
+    tipo: 'error' | 'warning' | 'info' | 'success' = 'warning',
+    duracionMs = 5000
+  ) {
+    if (this.snackbarTimer) {
+      clearTimeout(this.snackbarTimer);
+    }
+    this.snackbarTitle = titulo;
+    this.snackbarMessage = mensaje;
+    this.snackbarErrors = errores;
+    this.snackbarType = tipo;
+    this.showSnackbar = true;
+    this.cdr.detectChanges();
+
+    const tiempoFinal = errores.length > 0 ? Math.max(duracionMs, 6500) : duracionMs;
+    this.snackbarTimer = setTimeout(() => {
+      this.showSnackbar = false;
+      this.cdr.detectChanges();
+    }, tiempoFinal);
+  }
+
+  cerrarSnackbar() {
+    this.showSnackbar = false;
+    if (this.snackbarTimer) {
+      clearTimeout(this.snackbarTimer);
+    }
+    this.cdr.detectChanges();
+  }
+
+  validarYObtenerErrores(): string[] {
+    const errores: string[] = [];
+
+    // 1. Validar campos del Tutor / Adulto Responsable
+    const tutorCedula = this.ingresoForm.get('tutorCedula');
+    if (tutorCedula?.invalid) {
+      errores.push('Cédula del adulto responsable requerida.');
+    }
+
+    const tutorNombre = this.ingresoForm.get('tutorNombre');
+    if (tutorNombre?.invalid) {
+      if (tutorNombre.errors?.['required']) {
+        errores.push('Nombre del adulto responsable requerido.');
+      } else if (tutorNombre.errors?.['minlength']) {
+        errores.push('El nombre del adulto debe tener al menos 4 caracteres.');
+      }
+    }
+
+    const tutorParentesco = this.ingresoForm.get('tutorParentesco');
+    if (tutorParentesco?.invalid) {
+      errores.push('Parentesco con el niño(a) requerido (ej. Madre, Padre, Tía).');
+    }
+
+    const tutorWhatsapp = this.ingresoForm.get('tutorWhatsapp');
+    if (tutorWhatsapp?.invalid) {
+      if (tutorWhatsapp.errors?.['required']) {
+        errores.push('WhatsApp de contacto requerido.');
+      } else {
+        errores.push('WhatsApp inválido: use de 9 a 15 dígitos numéricos sin símbolos.');
+      }
+    }
+
+    const tutorCorreo = this.ingresoForm.get('tutorCorreo');
+    if (tutorCorreo?.invalid && tutorCorreo.value) {
+      errores.push('El correo electrónico tiene un formato incorrecto.');
+    }
+
+    // 2. Validar campos de cada Niño
+    this.ninosFormArray.controls.forEach((ninoCtrl, index) => {
+      const numNino = index + 1;
+      const ninoNombre = ninoCtrl.get('ninoNombre');
+      if (ninoNombre?.invalid) {
+        if (ninoNombre.errors?.['required']) {
+          errores.push(`Nombre del Niño(a) #${numNino} requerido.`);
+        } else if (ninoNombre.errors?.['minlength']) {
+          errores.push(`Nombre del Niño(a) #${numNino} debe tener al menos 3 caracteres.`);
+        }
+      }
+
+      const ninoFecha = ninoCtrl.get('ninoFechaNacimiento');
+      if (ninoFecha?.invalid) {
+        errores.push(`Fecha de nacimiento requerida para Niño(a) #${numNino}.`);
+      }
+    });
+
+    return errores;
+  }
 
   get ninosFormArray(): FormArray {
     return this.ingresoForm.get('ninos') as FormArray;
@@ -95,6 +193,7 @@ export class Ingreso {
     const cedulaControl = this.ingresoForm.get('tutorCedula');
     if (!cedulaControl || !cedulaControl.value || cedulaControl.value.trim() === '') {
       this.searchMessage = 'Ingrese una cédula para buscar.';
+      this.mostrarSnackbar('Cédula no ingresada', 'Por favor ingrese un número de cédula para buscar en el historial.', [], 'warning');
       this.cdr.detectChanges();
       setTimeout(() => { this.searchMessage = ''; this.cdr.detectChanges(); }, 3000);
       return;
@@ -134,7 +233,6 @@ export class Ingreso {
           .order('id', { ascending: true });
 
         if (ninosData && ninosData.length > 0 && !ninosError) {
-          console.log('Niños encontrados:', ninosData);
           this.ninosFormArray.clear();
           ninosData.forEach((nino) => {
             const ninoGroup = this.crearNinoFormGroup();
@@ -155,18 +253,20 @@ export class Ingreso {
             });
             this.ninosFormArray.push(ninoGroup);
           });
-          this.cdr.detectChanges();
           this.searchMessage = `Datos cargados exitosamente. Se encontraron ${ninosData.length} niño(s).`;
+          this.mostrarSnackbar('Adulto y Niños Encontrados', `Se cargó la información de ${tutorData.nombres_apellidos} y ${ninosData.length} niño(s).`, [], 'success');
         } else {
-          console.log('No se encontraron niños o hubo un error:', ninosError);
           this.searchMessage = 'Tutor encontrado exitosamente, pero no tiene niños registrados aún.';
+          this.mostrarSnackbar('Adulto Encontrado', `Se cargaron los datos de ${tutorData.nombres_apellidos}. Por favor registre al niño(a).`, [], 'info');
         }
       } else {
         this.searchMessage = 'No se encontró un tutor con esa cédula.';
+        this.mostrarSnackbar('No Encontrado', 'No se encontró un adulto responsable con esa cédula. Puede ingresar sus datos para registrarlo.', [], 'info');
       }
     } catch (error) {
       console.error('Error buscando cédula:', error);
       this.searchMessage = 'Error al buscar datos.';
+      this.mostrarSnackbar('Error de Búsqueda', 'Ocurrió un problema al consultar la cédula. Verifique su conexión.', [], 'error');
     } finally {
       this.isSearching = false;
       this.cdr.detectChanges();
@@ -179,6 +279,7 @@ export class Ingreso {
     if (!ninoControl || !ninoControl.value || ninoControl.value.trim() === '') {
       this.searchNinoMessage = 'Ingrese un nombre para buscar.';
       this.searchingNinoIndex = index;
+      this.mostrarSnackbar('Nombre no ingresado', 'Ingrese el nombre del niño(a) antes de buscar.', [], 'warning');
       this.cdr.detectChanges();
       setTimeout(() => { this.searchNinoMessage = ''; this.cdr.detectChanges(); }, 3000);
       return;
@@ -225,13 +326,16 @@ export class Ingreso {
         
         this.resultadosBusquedaNinos[index] = resultadosAplanados;
         this.searchNinoMessage = `Se encontraron ${resultadosAplanados.length} coincidencia(s). Seleccione uno de la lista.`;
+        this.mostrarSnackbar('Coincidencias encontradas', `Se encontraron ${resultadosAplanados.length} niños en el historial. Seleccione el adecuado en la lista desplegable.`, [], 'info');
       } else {
         this.searchNinoMessage = 'No se encontró ningún niño con ese nombre.';
+        this.mostrarSnackbar('Sin coincidencias', 'No se encontró ningún niño con ese nombre. Puede continuar con el registro como nuevo.', [], 'info');
         setTimeout(() => { this.searchNinoMessage = ''; this.searchingNinoIndex = -1; this.cdr.detectChanges(); }, 4000);
       }
     } catch (error) {
       console.error('Error buscando niño:', error);
       this.searchNinoMessage = 'Error al buscar datos.';
+      this.mostrarSnackbar('Error de Búsqueda', 'No se pudo buscar al niño. Intente nuevamente.', [], 'error');
       setTimeout(() => { this.searchNinoMessage = ''; this.searchingNinoIndex = -1; this.cdr.detectChanges(); }, 4000);
     } finally {
       this.isSearchingNino = false;
@@ -244,7 +348,6 @@ export class Ingreso {
     this.searchNinoMessage = '';
     
     if (ninoData.tutorSeleccionado) {
-      // Usamos el tutor seleccionado específicamente desde la lista aplanada
       let tutorData = ninoData.tutorSeleccionado;
       
       if (tutorData) {
@@ -259,44 +362,45 @@ export class Ingreso {
           tutorWhatsapp: tutorData.whatsapp || ''
         });
 
-      // Buscar todos los niños asociados al tutor
-      try {
-        this.isSearchingNino = true;
-        this.cdr.detectChanges();
-        
-        const { data: todosNinosData, error: todosNinosError } = await this.supabaseService.db('ninos')
-          .select('*, ninos_tutores!inner(tutor_id)')
-          .eq('ninos_tutores.tutor_id', tutorData.id)
-          .order('id', { ascending: true });
+        // Buscar todos los niños asociados al tutor
+        try {
+          this.isSearchingNino = true;
+          this.cdr.detectChanges();
+          
+          const { data: todosNinosData, error: todosNinosError } = await this.supabaseService.db('ninos')
+            .select('*, ninos_tutores!inner(tutor_id)')
+            .eq('ninos_tutores.tutor_id', tutorData.id)
+            .order('id', { ascending: true });
 
-        if (todosNinosData && todosNinosData.length > 0 && !todosNinosError) {
-          this.ninosFormArray.clear();
-          todosNinosData.forEach((nino: any) => {
-            const ninoGroup = this.crearNinoFormGroup();
-            let fechaParsed = '';
-            if (nino.fecha_nacimiento) {
-              fechaParsed = nino.fecha_nacimiento.split('T')[0];
-            }
-            ninoGroup.patchValue({
-              ninoId: nino.id,
-              ninoNombre: nino.nombres_apellidos || '',
-              ninoAlias: nino.alias || '',
-              ninoFechaNacimiento: fechaParsed,
-              ninoCodigo: nino.codigo_especifico || ninoGroup.get('ninoCodigo')?.value,
-              ninoNotas: nino.notas || ''
+          if (todosNinosData && todosNinosData.length > 0 && !todosNinosError) {
+            this.ninosFormArray.clear();
+            todosNinosData.forEach((nino: any) => {
+              const ninoGroup = this.crearNinoFormGroup();
+              let fechaParsed = '';
+              if (nino.fecha_nacimiento) {
+                fechaParsed = nino.fecha_nacimiento.split('T')[0];
+              }
+              ninoGroup.patchValue({
+                ninoId: nino.id,
+                ninoNombre: nino.nombres_apellidos || '',
+                ninoAlias: nino.alias || '',
+                ninoFechaNacimiento: fechaParsed,
+                ninoCodigo: nino.codigo_especifico || ninoGroup.get('ninoCodigo')?.value,
+                ninoNotas: nino.notas || ''
+              });
+              this.ninosFormArray.push(ninoGroup);
             });
-            this.ninosFormArray.push(ninoGroup);
-          });
-          this.searchNinoMessage = `Datos del tutor y ${todosNinosData.length} niño(s) cargados exitosamente.`;
+            this.searchNinoMessage = `Datos del tutor y ${todosNinosData.length} niño(s) cargados exitosamente.`;
+            this.mostrarSnackbar('Datos Vinculados', `Se cargó a ${tutorData.nombres_apellidos} y sus ${todosNinosData.length} niño(s) asociados.`, [], 'success');
+          }
+        } catch (error) {
+          console.error('Error buscando hermanos:', error);
+        } finally {
+          this.isSearchingNino = false;
+          this.searchingNinoIndex = -1;
+          this.cdr.detectChanges();
+          setTimeout(() => { this.searchNinoMessage = ''; this.cdr.detectChanges(); }, 4000);
         }
-      } catch (error) {
-        console.error('Error buscando hermanos:', error);
-      } finally {
-        this.isSearchingNino = false;
-        this.searchingNinoIndex = -1;
-        this.cdr.detectChanges();
-        setTimeout(() => { this.searchNinoMessage = ''; this.cdr.detectChanges(); }, 4000);
-      }
       }
     }
   }
@@ -304,11 +408,20 @@ export class Ingreso {
   async onSubmit() {
     if (this.ingresoForm.invalid) {
       this.ingresoForm.markAllAsTouched();
+      const errores = this.validarYObtenerErrores();
+      this.mostrarSnackbar(
+        'Información Incompleta o Inválida',
+        'Por favor corrige los siguientes datos antes de iniciar la sesión:',
+        errores,
+        'warning'
+      );
+      this.cdr.detectChanges();
       return;
     }
 
     this.isLoading = true;
     this.errorMessage = '';
+    this.cdr.detectChanges();
 
     const values = this.ingresoForm.value;
     let tutorIdFinal: string | null = null;
@@ -352,7 +465,7 @@ export class Ingreso {
           .insert(tutorPayload)
           .select('id')
           .single();
-        if (tutorError) throw new Error(`Error al registrar tutor: ${tutorError.message}`);
+        if (tutorError) throw new Error(`Error al registrar adulto responsable: ${tutorError.message}`);
         tutorIdFinal = tutorData.id;
       }
 
@@ -390,7 +503,7 @@ export class Ingreso {
           if (ninoError) throw new Error(`Error al registrar niño: ${ninoError.message}`);
           ninoIdFinal = ninoData.id;
           if (ninoIdFinal) {
-            ninosIdsCreados.push(ninoIdFinal); // Guardar para posible rollback
+            ninosIdsCreados.push(ninoIdFinal);
           }
         }
         
@@ -453,12 +566,12 @@ export class Ingreso {
       for (const id of ninosIdsCreados) {
         await this.supabaseService.db('ninos').delete().eq('id', id);
       }
-      // No borramos el tutor si ya existía, sería peligroso. Solo borramos si lo acabamos de crear.
-      // Pero por simplicidad de este prototipo, dejaremos el tutor si fallan las sesiones.
 
       this.errorMessage = err.message || 'Ocurrió un error inesperado en el servidor.';
+      this.mostrarSnackbar('Error al Registrar Entrada', this.errorMessage, [], 'error');
     } finally {
       this.isLoading = false;
+      this.cdr.detectChanges();
     }
   }
 
