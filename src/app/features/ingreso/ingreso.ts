@@ -43,13 +43,15 @@ export class Ingreso {
   searchingNinoIndex = -1;
   resultadosBusquedaNinos: { [index: number]: any[] } = {};
 
-  // Propiedades para Snackbar de Notificaciones
-  showSnackbar = false;
-  snackbarTitle = '';
-  snackbarMessage = '';
-  snackbarErrors: string[] = [];
-  snackbarType: 'error' | 'warning' | 'info' | 'success' = 'warning';
-  private snackbarTimer?: any;
+  // Variables para Dialog Modal de Alertas
+  showDialog = false;
+  dialogTitle = '';
+  dialogMessage = '';
+  dialogErrors: string[] = [];
+  dialogType: 'error' | 'warning' | 'info' | 'success' = 'warning';
+  dialogPrimaryBtn = 'Entendido';
+  dialogSecondaryBtn = '';
+  private dialogResolver?: (value: boolean) => void;
 
   // Estructura del formulario con validaciones requeridas
   ingresoForm: FormGroup = this.fb.group({
@@ -70,34 +72,33 @@ export class Ingreso {
     adultosExtra: ['0', [Validators.min(0)]]
   });
 
-  mostrarSnackbar(
+  abrirDialogo(
     titulo: string,
     mensaje: string,
     errores: string[] = [],
     tipo: 'error' | 'warning' | 'info' | 'success' = 'warning',
-    duracionMs = 5000
-  ) {
-    if (this.snackbarTimer) {
-      clearTimeout(this.snackbarTimer);
-    }
-    this.snackbarTitle = titulo;
-    this.snackbarMessage = mensaje;
-    this.snackbarErrors = errores;
-    this.snackbarType = tipo;
-    this.showSnackbar = true;
+    btnPrimario = 'Entendido',
+    btnSecundario = ''
+  ): Promise<boolean> {
+    this.dialogTitle = titulo;
+    this.dialogMessage = mensaje;
+    this.dialogErrors = errores;
+    this.dialogType = tipo;
+    this.dialogPrimaryBtn = btnPrimario;
+    this.dialogSecondaryBtn = btnSecundario;
+    this.showDialog = true;
     this.cdr.detectChanges();
 
-    const tiempoFinal = errores.length > 0 ? Math.max(duracionMs, 6500) : duracionMs;
-    this.snackbarTimer = setTimeout(() => {
-      this.showSnackbar = false;
-      this.cdr.detectChanges();
-    }, tiempoFinal);
+    return new Promise((resolve) => {
+      this.dialogResolver = resolve;
+    });
   }
 
-  cerrarSnackbar() {
-    this.showSnackbar = false;
-    if (this.snackbarTimer) {
-      clearTimeout(this.snackbarTimer);
+  cerrarDialogo(resultado: boolean = true) {
+    this.showDialog = false;
+    if (this.dialogResolver) {
+      this.dialogResolver(resultado);
+      this.dialogResolver = undefined;
     }
     this.cdr.detectChanges();
   }
@@ -193,9 +194,13 @@ export class Ingreso {
     const cedulaControl = this.ingresoForm.get('tutorCedula');
     if (!cedulaControl || !cedulaControl.value || cedulaControl.value.trim() === '') {
       this.searchMessage = 'Ingrese una cédula para buscar.';
-      this.mostrarSnackbar('Cédula no ingresada', 'Por favor ingrese un número de cédula para buscar en el historial.', [], 'warning');
-      this.cdr.detectChanges();
-      setTimeout(() => { this.searchMessage = ''; this.cdr.detectChanges(); }, 3000);
+      await this.abrirDialogo(
+        'Cédula no ingresada',
+        'Por favor ingrese un número de cédula para buscar en el historial de clientes.',
+        [],
+        'warning',
+        'Entendido'
+      );
       return;
     }
 
@@ -254,23 +259,32 @@ export class Ingreso {
             this.ninosFormArray.push(ninoGroup);
           });
           this.searchMessage = `Datos cargados exitosamente. Se encontraron ${ninosData.length} niño(s).`;
-          this.mostrarSnackbar('Adulto y Niños Encontrados', `Se cargó la información de ${tutorData.nombres_apellidos} y ${ninosData.length} niño(s).`, [], 'success');
         } else {
           this.searchMessage = 'Tutor encontrado exitosamente, pero no tiene niños registrados aún.';
-          this.mostrarSnackbar('Adulto Encontrado', `Se cargaron los datos de ${tutorData.nombres_apellidos}. Por favor registre al niño(a).`, [], 'info');
         }
       } else {
         this.searchMessage = 'No se encontró un tutor con esa cédula.';
-        this.mostrarSnackbar('No Encontrado', 'No se encontró un adulto responsable con esa cédula. Puede ingresar sus datos para registrarlo.', [], 'info');
+        await this.abrirDialogo(
+          'Adulto no encontrado',
+          `No se encontró ningún adulto responsable con la cédula "${cedula}". Puede completar el formulario para registrarlo como nuevo cliente.`,
+          [],
+          'info',
+          'Continuar'
+        );
       }
     } catch (error) {
       console.error('Error buscando cédula:', error);
       this.searchMessage = 'Error al buscar datos.';
-      this.mostrarSnackbar('Error de Búsqueda', 'Ocurrió un problema al consultar la cédula. Verifique su conexión.', [], 'error');
+      await this.abrirDialogo(
+        'Error de Búsqueda',
+        'Ocurrió un problema al consultar la cédula. Por favor verifique su conexión a internet.',
+        [],
+        'error',
+        'Entendido'
+      );
     } finally {
       this.isSearching = false;
       this.cdr.detectChanges();
-      setTimeout(() => { this.searchMessage = ''; this.cdr.detectChanges(); }, 3000);
     }
   }
 
@@ -279,9 +293,13 @@ export class Ingreso {
     if (!ninoControl || !ninoControl.value || ninoControl.value.trim() === '') {
       this.searchNinoMessage = 'Ingrese un nombre para buscar.';
       this.searchingNinoIndex = index;
-      this.mostrarSnackbar('Nombre no ingresado', 'Ingrese el nombre del niño(a) antes de buscar.', [], 'warning');
-      this.cdr.detectChanges();
-      setTimeout(() => { this.searchNinoMessage = ''; this.cdr.detectChanges(); }, 3000);
+      await this.abrirDialogo(
+        'Nombre no ingresado',
+        'Por favor ingrese el nombre del niño(a) antes de presionar Buscar.',
+        [],
+        'warning',
+        'Entendido'
+      );
       return;
     }
 
@@ -326,17 +344,26 @@ export class Ingreso {
         
         this.resultadosBusquedaNinos[index] = resultadosAplanados;
         this.searchNinoMessage = `Se encontraron ${resultadosAplanados.length} coincidencia(s). Seleccione uno de la lista.`;
-        this.mostrarSnackbar('Coincidencias encontradas', `Se encontraron ${resultadosAplanados.length} niños en el historial. Seleccione el adecuado en la lista desplegable.`, [], 'info');
       } else {
         this.searchNinoMessage = 'No se encontró ningún niño con ese nombre.';
-        this.mostrarSnackbar('Sin coincidencias', 'No se encontró ningún niño con ese nombre. Puede continuar con el registro como nuevo.', [], 'info');
-        setTimeout(() => { this.searchNinoMessage = ''; this.searchingNinoIndex = -1; this.cdr.detectChanges(); }, 4000);
+        await this.abrirDialogo(
+          'Sin coincidencias',
+          `No se encontró ningún niño(a) registrado con el nombre "${nombre}". Puede continuar con el registro como nuevo.`,
+          [],
+          'info',
+          'Continuar'
+        );
       }
     } catch (error) {
       console.error('Error buscando niño:', error);
       this.searchNinoMessage = 'Error al buscar datos.';
-      this.mostrarSnackbar('Error de Búsqueda', 'No se pudo buscar al niño. Intente nuevamente.', [], 'error');
-      setTimeout(() => { this.searchNinoMessage = ''; this.searchingNinoIndex = -1; this.cdr.detectChanges(); }, 4000);
+      await this.abrirDialogo(
+        'Error de Búsqueda',
+        'No se pudo buscar al niño. Intente nuevamente.',
+        [],
+        'error',
+        'Entendido'
+      );
     } finally {
       this.isSearchingNino = false;
       this.cdr.detectChanges();
@@ -391,7 +418,6 @@ export class Ingreso {
               this.ninosFormArray.push(ninoGroup);
             });
             this.searchNinoMessage = `Datos del tutor y ${todosNinosData.length} niño(s) cargados exitosamente.`;
-            this.mostrarSnackbar('Datos Vinculados', `Se cargó a ${tutorData.nombres_apellidos} y sus ${todosNinosData.length} niño(s) asociados.`, [], 'success');
           }
         } catch (error) {
           console.error('Error buscando hermanos:', error);
@@ -399,7 +425,6 @@ export class Ingreso {
           this.isSearchingNino = false;
           this.searchingNinoIndex = -1;
           this.cdr.detectChanges();
-          setTimeout(() => { this.searchNinoMessage = ''; this.cdr.detectChanges(); }, 4000);
         }
       }
     }
@@ -409,13 +434,13 @@ export class Ingreso {
     if (this.ingresoForm.invalid) {
       this.ingresoForm.markAllAsTouched();
       const errores = this.validarYObtenerErrores();
-      this.mostrarSnackbar(
+      await this.abrirDialogo(
         'Información Incompleta o Inválida',
-        'Por favor corrige los siguientes datos antes de iniciar la sesión:',
+        'Por favor completa o corrige los siguientes campos antes de registrar el ingreso:',
         errores,
-        'warning'
+        'warning',
+        'Revisar Formulario'
       );
-      this.cdr.detectChanges();
       return;
     }
 
@@ -568,7 +593,7 @@ export class Ingreso {
       }
 
       this.errorMessage = err.message || 'Ocurrió un error inesperado en el servidor.';
-      this.mostrarSnackbar('Error al Registrar Entrada', this.errorMessage, [], 'error');
+      await this.abrirDialogo('Error al Registrar Entrada', this.errorMessage, [], 'error', 'Entendido');
     } finally {
       this.isLoading = false;
       this.cdr.detectChanges();
