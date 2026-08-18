@@ -133,13 +133,16 @@ export class Dashboard implements OnInit, OnDestroy {
 
   async cargarConfiguracion() {
     try {
-      const { data } = await this.supabaseService.db('configuracion_sistema').select('precio_minuto_extra, titulo_dashboard').eq('id', 1).single();
+      const { data } = await this.supabaseService.db('configuracion_sistema').select('*').eq('id', 1).single();
       if (data) {
         if (data.precio_minuto_extra !== undefined) {
           this.precioPaqueteExtra = data.precio_minuto_extra;
         }
         if (data.titulo_dashboard) {
           this.tituloDashboard = data.titulo_dashboard;
+        } else if (typeof window !== 'undefined' && window.localStorage) {
+          const localTitle = localStorage.getItem('titulo_dashboard');
+          if (localTitle) this.tituloDashboard = localTitle;
         }
       }
     } catch (e) {

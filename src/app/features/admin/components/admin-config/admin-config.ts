@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { SupabaseService } from '../../../../core/services/supabase/supabase';
@@ -13,9 +13,11 @@ export class AdminConfig implements OnInit {
 
   private fb = inject(FormBuilder);
   private supabase = inject(SupabaseService);
+  private cdr = inject(ChangeDetectorRef);
 
   isLoading = true;
   isSaving = false;
+  personalGuardandoId: string | null = null;
   subSeccion: 'negocio' | 'personal' = 'negocio'; // Control de sub-pestañas
   mensajeFeedback = '';
 
@@ -54,81 +56,149 @@ export class AdminConfig implements OnInit {
     });
   }
 
+  private tieneColumnaTituloDashboard = false;
+
   async cargarDatos() {
     this.isLoading = true;
+    this.cdr.detectChanges();
     try {
-      // 1. Cargar Configuración Global
-      const { data: config } = await this.supabase.from('configuracion_sistema').select('*').eq('id', 1).single();
-      if (config) {
-        this.configForm.patchValue(config);
+      // 1. Cargar Configuración Global y Personal en paralelo para acelerar la respuesta
+      const [configRes, personalRes] = await Promise.all([
+        this.supabase.from('configuracion_sistema').select('*').eq('id', 1).single(),
+        this.supabase.from('perfiles').select('*').order('nombre', { ascending: true })
+      ]);
+
+      if (configRes.data) {
+        this.tieneColumnaTituloDashboard = 'titulo_dashboard' in configRes.data;
+        let tituloGuardado = configRes.data.titulo_dashboard;
+        if (!tituloGuardado && typeof window !== 'undefined' && window.localStorage) {
+          tituloGuardado = localStorage.getItem('titulo_dashboard') || 'Panel de Control - Sucursal Norte';
+        }
+
+        this.configForm.patchValue({
+          precio_base: configRes.data.precio_base,
+          minutos_base: configRes.data.minutos_base,
+          precio_minuto_extra: configRes.data.precio_minuto_extra,
+          msg_bienvenida: configRes.data.msg_bienvenida,
+          msg_advertencia_5min: configRes.data.msg_advertencia_5min,
+          msg_tiempo_cumplido: configRes.data.msg_tiempo_cumplido,
+          titulo_dashboard: tituloGuardado || 'Panel de Control - Sucursal Norte'
+        });
       }
 
-      // 2. Cargar Lista de Personal Existente
-      const { data: personal } = await this.supabase.from('perfiles').select('*').order('nombre', { ascending: true });
-      if (personal) this.listaPersonal = personal;
-
+      if (personalRes.data) {
+        this.listaPersonal = personalRes.data;
+      }
     } catch (error) {
       console.error('Error al cargar configuraciones:', error);
     } finally {
       this.isLoading = false;
+      this.cdr.detectChanges();
     }
   }
 
   async guardarConfiguracion() {
-    if (this.configForm.invalid) return;
+    if (this.configForm.invalid || this.isSaving) return;
     this.isSaving = true;
+    this.cdr.detectChanges();
 
-    const { error } = await this.supabase.from('configuracion_sistema')
-      .update(this.configForm.value)
-      .eq('id', 1);
+    try {
+      const formVal = this.configForm.value;
+      const payload: any = {
+        precio_base: Number(formVal.precio_base),
+        minutos_base: Number(formVal.minutos_base),
+        precio_minuto_extra: Number(formVal.precio_minuto_extra),
+        msg_bienvenida: formVal.msg_bienvenida,
+        msg_advertencia_5min: formVal.msg_advertencia_5min,
+        msg_tiempo_cumplido: formVal.msg_tiempo_cumplido
+      };
 
-    this.isSaving = false;
-    if (error) {
-      await this.abrirDialogo('Error', 'Error al guardar cambios: ' + error.message, 'Entendido');
-    } else {
-      this.mostrarFeedback('Cambios guardados exitosamente');
+      if (this.tieneColumnaTituloDashboard) {
+        payload.titulo_dashboard = formVal.titulo_dashboard;
+      }
+
+      if (typeof window !== 'undefined' && window.localStorage && formVal.titulo_dashboard) {
+        localStorage.setItem('titulo_dashboard', formVal.titulo_dashboard);
+      }
+
+      const { error } = await this.supabase.from('configuracion_sistema')
+        .update(payload)
+        .eq('id', 1);
+
+      if (error) {
+        await this.abrirDialogo('Error', 'Error al guardar cambios: ' + error.message, 'Entendido');
+      } else {
+        this.mostrarFeedback('Cambios guardados exitosamente');
+      }
+    } catch (err: any) {
+      console.error('Error inesperado al guardar configuración:', err);
+      await this.abrirDialogo('Error', 'Ocurrió un error inesperado al guardar los cambios: ' + (err?.message || err), 'Entendido');
+    } finally {
+      this.isSaving = false;
+      this.cdr.detectChanges();
     }
   }
 
   async registrarColaborador() {
-    if (this.personalForm.invalid) return;
+    if (this.personalForm.invalid || this.isSaving) return;
     this.isSaving = true;
+    this.cdr.detectChanges();
 
-    const { email, nombre, rol } = this.personalForm.value;
+    try {
+      const { email } = this.personalForm.value;
 
-    await this.abrirDialogo(
-      'Invitación Enviada',
-      `Nota técnica: Para producción, se enviará una invitación por correo a ${email}. El perfil se creará automáticamente cuando acepte.`,
-      'Entendido'
-    );
+      await this.abrirDialogo(
+        'Invitación Enviada',
+        `Nota técnica: Para producción, se enviará una invitación por correo a ${email}. El perfil se creará automáticamente cuando acepte.`,
+        'Entendido'
+      );
 
-    this.personalForm.reset({ rol: 'ENCARGADO' });
-    this.isSaving = false;
-    await this.cargarDatos();
+      this.personalForm.reset({ rol: 'ENCARGADO' });
+      await this.cargarDatos();
+    } catch (err: any) {
+      console.error('Error al registrar colaborador:', err);
+      await this.abrirDialogo('Error', 'No se pudo completar el registro: ' + (err?.message || err), 'Entendido');
+    } finally {
+      this.isSaving = false;
+      this.cdr.detectChanges();
+    }
   }
 
   async actualizarPersonal(perfil: any) {
-    this.isSaving = true;
+    if (this.personalGuardandoId) return;
+    this.personalGuardandoId = perfil.id;
+    this.cdr.detectChanges();
 
-    const { error } = await this.supabase.from('perfiles')
-      .update({
-        hora_entrada: perfil.hora_entrada,
-        hora_salida: perfil.hora_salida,
-        activo: perfil.activo
-      })
-      .eq('id', perfil.id);
+    try {
+      const { error } = await this.supabase.from('perfiles')
+        .update({
+          hora_entrada: perfil.hora_entrada,
+          hora_salida: perfil.hora_salida,
+          activo: perfil.activo
+        })
+        .eq('id', perfil.id);
 
-    this.isSaving = false;
-    if (error) {
-      await this.abrirDialogo('Error', 'Error al actualizar el personal: ' + error.message, 'Entendido');
-    } else {
-      this.mostrarFeedback('cambios realizados correctamente');
+      if (error) {
+        await this.abrirDialogo('Error', 'Error al actualizar el personal: ' + error.message, 'Entendido');
+      } else {
+        this.mostrarFeedback('Cambios del colaborador guardados correctamente');
+      }
+    } catch (err: any) {
+      console.error('Error inesperado al actualizar personal:', err);
+      await this.abrirDialogo('Error', 'Error al actualizar: ' + (err?.message || err), 'Entendido');
+    } finally {
+      this.personalGuardandoId = null;
+      this.cdr.detectChanges();
     }
   }
 
   private mostrarFeedback(msg: string) {
     this.mensajeFeedback = msg;
-    setTimeout(() => this.mensajeFeedback = '', 4000);
+    this.cdr.detectChanges();
+    setTimeout(() => {
+      this.mensajeFeedback = '';
+      this.cdr.detectChanges();
+    }, 3500);
   }
 
   // DIALOGO CUSTOM
@@ -138,6 +208,7 @@ export class AdminConfig implements OnInit {
     this.dialogPrimaryBtn = btnPrimario;
     this.dialogSecondaryBtn = btnSecundario;
     this.showConfirmDialog = true;
+    this.cdr.detectChanges();
     
     return new Promise((resolve) => {
       this.dialogResolver = resolve;
@@ -150,5 +221,6 @@ export class AdminConfig implements OnInit {
       this.dialogResolver(resultado);
       this.dialogResolver = undefined;
     }
+    this.cdr.detectChanges();
   }
 }
