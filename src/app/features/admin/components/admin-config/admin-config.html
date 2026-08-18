@@ -8,10 +8,10 @@
                 acceso</p>
         </div>
         <div class="flex bg-gray-100 p-1 rounded-xl self-start">
-            <button type="button" (click)="subSeccion = 'negocio'"
+            <button type="button" (click)="cambiarSubSeccion('negocio')"
                 [ngClass]="{'bg-white text-indigo-600 font-bold shadow-sm': subSeccion === 'negocio'}"
                 class="px-4 py-1.5 text-xs rounded-lg text-gray-500 transition-all cursor-pointer">Reglas de Negocio</button>
-            <button type="button" (click)="subSeccion = 'personal'"
+            <button type="button" (click)="cambiarSubSeccion('personal')"
                 [ngClass]="{'bg-white text-indigo-600 font-bold shadow-sm': subSeccion === 'personal'}"
                 class="px-4 py-1.5 text-xs rounded-lg text-gray-500 transition-all cursor-pointer">Equipo y Personal</button>
         </div>
