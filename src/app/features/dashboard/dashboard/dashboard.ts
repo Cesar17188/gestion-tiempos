@@ -12,6 +12,8 @@ export interface SesionJuego {
   ninoId: string;
   nombreNino: string;
   aliasNino?: string;
+  ninoFechaNacimiento?: string;
+  ninoNotas?: string;
   nombreTutor: string;
   parentescoTutor: string;
   whatsapp: string;
@@ -98,6 +100,10 @@ export class Dashboard implements OnInit, OnDestroy {
   isSavingTutor = false;
   searchTutorMessage = '';
 
+  // Variables para Actualización de Niño
+  showUpdateNinoDialog = false;
+  isSavingNino = false;
+
   private fb = inject(FormBuilder);
   tutorUpdateForm: FormGroup = this.fb.group({
     tutorNombre: ['', [Validators.required, Validators.minLength(4)]],
@@ -107,6 +113,13 @@ export class Dashboard implements OnInit, OnDestroy {
     tutorCorreo: ['', [Validators.email]],
     tutorContactoAdicional: [''],
     tutorWhatsapp: ['', [Validators.required, Validators.pattern('^[0-9]{9,15}$')]]
+  });
+
+  ninoUpdateForm: FormGroup = this.fb.group({
+    ninoNombre: ['', [Validators.required, Validators.minLength(3)]],
+    ninoAlias: [''],
+    ninoFechaNacimiento: ['', [Validators.required]],
+    ninoNotas: ['']
   });
 
   async ngOnInit() {
@@ -256,6 +269,8 @@ export class Dashboard implements OnInit, OnDestroy {
         ninos (
           nombres_apellidos,
           alias,
+          fecha_nacimiento,
+          notas,
           tutores (
             nombres_apellidos,
             whatsapp,
@@ -281,6 +296,8 @@ export class Dashboard implements OnInit, OnDestroy {
           ninoId: item.nino_id,
           nombreNino: item.ninos?.nombres_apellidos || 'Desconocido',
           aliasNino: item.ninos?.alias?.trim() || '',
+          ninoFechaNacimiento: item.ninos?.fecha_nacimiento || '',
+          ninoNotas: item.ninos?.notas || '',
           nombreTutor: ultimoTutor?.nombres_apellidos || 'Desconocido',
           parentescoTutor: ultimoTutor?.parentesco || '',
           whatsapp: ultimoTutor?.whatsapp || '',
@@ -710,6 +727,72 @@ export class Dashboard implements OnInit, OnDestroy {
       this.isSavingTutor = false;
       this.cdr.detectChanges();
     }
+  }
+
+  // --- ACTUALIZACIÓN DE NIÑO ---
+  abrirDialogoActualizarNino(sesion: SesionJuego) {
+    this.selectedSesionForUpdate = sesion;
+    this.ninoUpdateForm.patchValue({
+      ninoNombre: sesion.nombreNino || '',
+      ninoAlias: sesion.aliasNino || '',
+      ninoFechaNacimiento: sesion.ninoFechaNacimiento || '',
+      ninoNotas: sesion.ninoNotas || ''
+    });
+    this.showUpdateNinoDialog = true;
+  }
+
+  cerrarDialogoActualizarNino() {
+    this.showUpdateNinoDialog = false;
+    this.selectedSesionForUpdate = null;
+    this.ninoUpdateForm.reset();
+  }
+
+  async guardarActualizarNino() {
+    if (this.ninoUpdateForm.invalid || !this.selectedSesionForUpdate) {
+      this.ninoUpdateForm.markAllAsTouched();
+      return;
+    }
+
+    this.isSavingNino = true;
+    const values = this.ninoUpdateForm.value;
+    const ninoId = this.selectedSesionForUpdate.ninoId;
+
+    try {
+      const ninoPayload = {
+        nombres_apellidos: values.ninoNombre,
+        alias: values.ninoAlias,
+        fecha_nacimiento: values.ninoFechaNacimiento,
+        notas: values.ninoNotas
+      };
+
+      const { error } = await this.supabaseService.db('ninos')
+        .update(ninoPayload)
+        .eq('id', ninoId);
+
+      if (error) throw error;
+
+      this.mostrarToast('Datos del niño actualizados exitosamente.', 'success');
+      this.cerrarDialogoActualizarNino();
+      this.cargarSesionesActivas();
+
+    } catch (err: any) {
+      console.error(err);
+      this.mostrarToast(err.message || 'Error al actualizar datos del niño.', 'error');
+    } finally {
+      this.isSavingNino = false;
+      this.cdr.detectChanges();
+    }
+  }
+
+  onEditOptionSelected(sesion: SesionJuego, event: Event) {
+    const select = event.target as HTMLSelectElement;
+    const value = select.value;
+    if (value === 'tutor') {
+      this.abrirDialogoActualizarTutor(sesion);
+    } else if (value === 'nino') {
+      this.abrirDialogoActualizarNino(sesion);
+    }
+    select.value = ''; // Reset
   }
 
   // 3. FUNCIÓN PARA VERIFICAR SI EL USUARIO ES ADMINISTRADOR

@@ -1,20 +1,26 @@
-/* Global Styles */
-:root {
-  /* Paleta de colores principal */
+@import "tailwindcss";
+
+@theme {
   --color-fondo: #FEE5D2;
   --color-titulos: #9CAE94;
-  --color-texto-secundario: #EA9996;
-  --color-texto-normal: #8B7D6C;
+  --color-secundario: #EA9996;
+  --color-normal: #8B7D6C;
   --color-boton: #E59694;
   --color-boton-texto: #F8C79C;
 
-  /* Colores de contraste para cuadros y tablas */
   --color-contraste-1: #C5D2C0;
   --color-contraste-2: #90A98A;
   --color-contraste-3: #ABBBA3;
   --color-contraste-4: #E1AC7A;
   --color-contraste-5: #F8BEAB;
   --color-contraste-6: #3A2A17;
+
+  --font-sans: 'Fredoka', sans-serif;
+}
+
+:root {
+  --color-texto-secundario: var(--color-secundario);
+  --color-texto-normal: var(--color-normal);
 }
 
 html, body {
