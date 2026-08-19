@@ -83,7 +83,12 @@
         <div class="card-body">
           <div class="card-header">
             <div class="child-info">
-              <h3>{{ sesion.nombreNino }}</h3>
+              <h3>
+                @if (sesion.aliasNino) {
+                <span class="child-alias">"{{ sesion.aliasNino }}"</span>
+                }
+                {{ sesion.nombreNino }}
+              </h3>
               <p class="text-secondary flex items-center gap-2">
                 <span><strong>Tutor:</strong> {{ sesion.nombreTutor }} - {{ sesion.parentescoTutor }}</span>
                 <button (click)="abrirDialogoActualizarTutor(sesion)"

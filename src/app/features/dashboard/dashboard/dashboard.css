@@ -283,6 +283,12 @@
   word-wrap: break-word;
 }
 
+.child-alias {
+  color: #4f46e5;
+  font-weight: 800;
+  margin-right: 0.25rem;
+}
+
 .child-info p {
   font-size: 0.875rem;
   margin: 0;

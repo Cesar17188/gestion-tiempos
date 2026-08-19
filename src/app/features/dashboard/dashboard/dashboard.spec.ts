@@ -72,6 +72,7 @@ describe('Dashboard', () => {
         costo_base: 30,
         ninos: {
           nombres_apellidos: 'Niño 1',
+          alias: 'Niñito',
           tutores: { nombres_apellidos: 'Tutor 1' }
         }
       }],
@@ -96,6 +97,7 @@ describe('Dashboard', () => {
 
     expect(component.sesiones.length).toBe(1);
     expect(component.sesiones[0].nombreNino).toBe('Niño 1');
+    expect(component.sesiones[0].aliasNino).toBe('Niñito');
     expect(component.sesiones[0].estadoAlerta).toBe('normal');
   });
 

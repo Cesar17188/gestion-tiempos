@@ -11,6 +11,7 @@ export interface SesionJuego {
   id: string;
   ninoId: string;
   nombreNino: string;
+  aliasNino?: string;
   nombreTutor: string;
   parentescoTutor: string;
   whatsapp: string;
@@ -254,6 +255,7 @@ export class Dashboard implements OnInit, OnDestroy {
         observaciones_tipologia,
         ninos (
           nombres_apellidos,
+          alias,
           tutores (
             nombres_apellidos,
             whatsapp,
@@ -278,6 +280,7 @@ export class Dashboard implements OnInit, OnDestroy {
           id: item.id,
           ninoId: item.nino_id,
           nombreNino: item.ninos?.nombres_apellidos || 'Desconocido',
+          aliasNino: item.ninos?.alias?.trim() || '',
           nombreTutor: ultimoTutor?.nombres_apellidos || 'Desconocido',
           parentescoTutor: ultimoTutor?.parentesco || '',
           whatsapp: ultimoTutor?.whatsapp || '',
