@@ -273,25 +273,49 @@
 .child-info {
   flex: 1;
   min-width: 0; /* for text-overflow to work if needed */
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
 }
 
-.child-info h3 {
-  font-size: 1.125rem;
+.person-info-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.child-block {
+  padding-bottom: 0.35rem;
+  border-bottom: 1px dashed rgba(0, 0, 0, 0.08);
+}
+
+.info-row {
+  font-size: 0.875rem;
+  line-height: 1.35;
+  margin: 0;
+  word-wrap: break-word;
+}
+
+.info-label {
   font-weight: 700;
   color: var(--color-contraste-6);
-  margin: 0 0 0.25rem 0;
-  word-wrap: break-word;
+  margin-right: 0.35rem;
+  font-size: 0.825rem;
+  letter-spacing: -0.01em;
+}
+
+.info-value {
+  color: #1e293b;
 }
 
 .child-alias {
   color: #4f46e5;
-  font-weight: 800;
-  margin-right: 0.25rem;
+  font-weight: 700;
 }
 
-.child-info p {
-  font-size: 0.875rem;
-  margin: 0;
+.tutor-alias {
+  color: #0284c7;
+  font-weight: 700;
 }
 
 .timer-section {

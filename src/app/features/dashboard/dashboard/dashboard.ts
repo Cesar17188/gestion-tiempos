@@ -15,6 +15,7 @@ export interface SesionJuego {
   ninoFechaNacimiento?: string;
   ninoNotas?: string;
   nombreTutor: string;
+  aliasTutor?: string;
   parentescoTutor: string;
   whatsapp: string;
   horaIngreso: Date;
@@ -273,6 +274,7 @@ export class Dashboard implements OnInit, OnDestroy {
           notas,
           tutores (
             nombres_apellidos,
+            alias,
             whatsapp,
             parentesco
           )
@@ -299,6 +301,7 @@ export class Dashboard implements OnInit, OnDestroy {
           ninoFechaNacimiento: item.ninos?.fecha_nacimiento || '',
           ninoNotas: item.ninos?.notas || '',
           nombreTutor: ultimoTutor?.nombres_apellidos || 'Desconocido',
+          aliasTutor: ultimoTutor?.alias?.trim() || '',
           parentescoTutor: ultimoTutor?.parentesco || '',
           whatsapp: ultimoTutor?.whatsapp || '',
         horaIngreso: new Date(item.ingreso_at),

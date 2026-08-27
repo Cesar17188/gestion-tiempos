@@ -83,33 +83,51 @@
         <div class="card-body">
           <div class="card-header">
             <div class="child-info">
-              <h3>
+              <div class="person-info-block child-block">
                 @if (sesion.aliasNino) {
-                <span class="child-alias">"{{ sesion.aliasNino }}"</span>
+                <div class="info-row">
+                  <span class="info-label">Apodo del niño:</span>
+                  <span class="info-value child-alias">"{{ sesion.aliasNino }}"</span>
+                </div>
                 }
-                {{ sesion.nombreNino }}
-              </h3>
-              <p class="text-secondary flex items-center gap-2">
-                <span><strong>Tutor:</strong> {{ sesion.nombreTutor }} - {{ sesion.parentescoTutor }}</span>
-                <span class="relative inline-flex items-center">
-                  <select (change)="onEditOptionSelected(sesion, $event)"
-                    class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                    title="Editar Información">
-                    <option value="" disabled selected></option>
-                    <option value="tutor">Editar Responsable</option>
-                    <option value="nino">Editar Niño</option>
-                  </select>
-                  <button type="button"
-                    class="text-indigo-500 hover:text-indigo-700 transition-colors p-2 rounded-full hover:bg-indigo-50 focus:outline-none"
-                    title="Actualizar Información">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z">
-                      </path>
-                    </svg>
-                  </button>
-                </span>
-              </p>
+                <div class="info-row">
+                  <span class="info-label">Nombre del niño:</span>
+                  <span class="info-value font-bold text-gray-900">{{ sesion.nombreNino }}</span>
+                </div>
+              </div>
+
+              <div class="person-info-block tutor-block">
+                @if (sesion.aliasTutor) {
+                <div class="info-row">
+                  <span class="info-label">Apodo del tutor:</span>
+                  <span class="info-value tutor-alias">"{{ sesion.aliasTutor }}"</span>
+                </div>
+                }
+                <div class="info-row flex items-center justify-between gap-1">
+                  <div>
+                    <span class="info-label">Nombre del tutor:</span>
+                    <span class="info-value text-secondary">{{ sesion.nombreTutor }}@if (sesion.parentescoTutor) { - {{ sesion.parentescoTutor }}}</span>
+                  </div>
+                  <span class="relative inline-flex items-center flex-shrink-0">
+                    <select (change)="onEditOptionSelected(sesion, $event)"
+                      class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                      title="Editar Información">
+                      <option value="" disabled selected></option>
+                      <option value="tutor">Editar Responsable</option>
+                      <option value="nino">Editar Niño</option>
+                    </select>
+                    <button type="button"
+                      class="text-indigo-500 hover:text-indigo-700 transition-colors p-1 rounded-full hover:bg-indigo-50 focus:outline-none"
+                      title="Actualizar Información">
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z">
+                        </path>
+                      </svg>
+                    </button>
+                  </span>
+                </div>
+              </div>
             </div>
             <div class="timer-section">
               <div class="timer">
