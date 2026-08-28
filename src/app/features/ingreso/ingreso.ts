@@ -4,6 +4,15 @@ import { ReactiveFormsModule, FormBuilder, FormGroup, FormArray, Validators } fr
 import { Router } from '@angular/router';
 import { trigger, transition, style, animate } from '@angular/animations';
 import { SupabaseService } from '../../core/services/supabase/supabase';
+import { 
+  validarCorreo, 
+  validarTelefono, 
+  validarCedulaOPasaporte, 
+  normalizarTelefono, 
+  formatearTelefonoParaVista, 
+  sanitizarTexto, 
+  sanitizarCorreo 
+} from '../../core/validators/custom-validators';
 
 @Component({
   selector: 'app-ingreso',
@@ -58,12 +67,12 @@ export class Ingreso implements OnInit {
   ingresoForm: FormGroup = this.fb.group({
     // Datos del Tutor
     tutorNombre: ['', [Validators.required, Validators.minLength(4)]],
-    tutorCedula: ['', [Validators.required]],
+    tutorCedula: ['', [Validators.required, validarCedulaOPasaporte()]],
     tutorAlias: [''],
     tutorParentesco: ['', [Validators.required]],
-    tutorCorreo: ['', [Validators.email]],
+    tutorCorreo: ['', [validarCorreo()]],
     tutorContactoAdicional: [''],
-    tutorWhatsapp: ['', [Validators.required, Validators.pattern('^[0-9]{9,15}$')]], // Permite formatos internacionales
+    tutorWhatsapp: ['', [Validators.required, validarTelefono()]],
 
     // FormArray para los Niños
     ninos: this.fb.array([this.crearNinoFormGroup()]),
@@ -138,7 +147,13 @@ export class Ingreso implements OnInit {
     // 1. Validar campos del Tutor / Adulto Responsable
     const tutorCedula = this.ingresoForm.get('tutorCedula');
     if (tutorCedula?.invalid) {
-      errores.push('Cédula del adulto responsable requerida.');
+      if (tutorCedula.errors?.['required']) {
+        errores.push('Cédula o identificación del adulto responsable requerida.');
+      } else if (tutorCedula.errors?.['cedulaInvalida']) {
+        errores.push(tutorCedula.errors['cedulaInvalida']);
+      } else {
+        errores.push('Cédula o pasaporte con formato inválido.');
+      }
     }
 
     const tutorNombre = this.ingresoForm.get('tutorNombre');
@@ -158,15 +173,21 @@ export class Ingreso implements OnInit {
     const tutorWhatsapp = this.ingresoForm.get('tutorWhatsapp');
     if (tutorWhatsapp?.invalid) {
       if (tutorWhatsapp.errors?.['required']) {
-        errores.push('WhatsApp de contacto requerido.');
+        errores.push('WhatsApp / Teléfono de contacto requerido.');
+      } else if (tutorWhatsapp.errors?.['telefonoInvalido']) {
+        errores.push(tutorWhatsapp.errors['telefonoInvalido']);
       } else {
-        errores.push('WhatsApp inválido: use de 9 a 15 dígitos numéricos sin símbolos.');
+        errores.push('WhatsApp inválido: use de 9 a 15 dígitos numéricos.');
       }
     }
 
     const tutorCorreo = this.ingresoForm.get('tutorCorreo');
     if (tutorCorreo?.invalid && tutorCorreo.value) {
-      errores.push('El correo electrónico tiene un formato incorrecto.');
+      if (tutorCorreo.errors?.['correoInvalido']) {
+        errores.push(tutorCorreo.errors['correoInvalido']);
+      } else {
+        errores.push('El correo electrónico tiene un formato incorrecto (ej. usuario@ejemplo.com).');
+      }
     }
 
     // 2. Validar campos de cada Niño
@@ -194,6 +215,42 @@ export class Ingreso implements OnInit {
     }
 
     return errores;
+  }
+
+  obtenerVistaTelefono(): string {
+    const val = this.ingresoForm.get('tutorWhatsapp')?.value;
+    return formatearTelefonoParaVista(val);
+  }
+
+  onBlurCorreo() {
+    const ctrl = this.ingresoForm.get('tutorCorreo');
+    if (ctrl && ctrl.value) {
+      ctrl.setValue(sanitizarCorreo(ctrl.value), { emitEvent: false });
+    }
+  }
+
+  onBlurTelefono() {
+    const ctrl = this.ingresoForm.get('tutorWhatsapp');
+    if (ctrl && ctrl.value) {
+      const normalizado = normalizarTelefono(ctrl.value);
+      if (normalizado && !ctrl.errors) {
+        ctrl.setValue(normalizado, { emitEvent: false });
+      }
+    }
+  }
+
+  onBlurCedula() {
+    const ctrl = this.ingresoForm.get('tutorCedula');
+    if (ctrl && ctrl.value) {
+      ctrl.setValue(sanitizarTexto(ctrl.value), { emitEvent: false });
+    }
+  }
+
+  onBlurNombreTutor() {
+    const ctrl = this.ingresoForm.get('tutorNombre');
+    if (ctrl && ctrl.value) {
+      ctrl.setValue(sanitizarTexto(ctrl.value), { emitEvent: false });
+    }
   }
 
   get ninosFormArray(): FormArray {
@@ -601,19 +658,23 @@ export class Ingreso implements OnInit {
       }
 
       // 1. PASO UNO: Buscar si el tutor ya existe para no duplicarlo, o crearlo.
+      const cedulaSanitizada = sanitizarTexto(values.tutorCedula);
+      const whatsappNormalizado = normalizarTelefono(values.tutorWhatsapp);
+      const correoSanitizado = sanitizarCorreo(values.tutorCorreo);
+
       const { data: existingTutor } = await this.supabaseService.db('tutores')
         .select('id')
-        .eq('cedula', values.tutorCedula)
+        .eq('cedula', cedulaSanitizada)
         .maybeSingle();
 
       const tutorPayload = {
-        nombres_apellidos: values.tutorNombre,
-        cedula: values.tutorCedula,
-        alias: values.tutorAlias,
-        parentesco: values.tutorParentesco,
-        correo: values.tutorCorreo,
-        contacto_adicional_nombre: values.tutorContactoAdicional,
-        whatsapp: values.tutorWhatsapp
+        nombres_apellidos: sanitizarTexto(values.tutorNombre),
+        cedula: cedulaSanitizada,
+        alias: sanitizarTexto(values.tutorAlias),
+        parentesco: sanitizarTexto(values.tutorParentesco),
+        correo: correoSanitizado,
+        contacto_adicional_nombre: sanitizarTexto(values.tutorContactoAdicional),
+        whatsapp: whatsappNormalizado
       };
 
       if (existingTutor) {
@@ -636,7 +697,7 @@ export class Ingreso implements OnInit {
           // Verificar si este niño ya existe por nombre
           const { data: existingNino } = await this.supabaseService.db('ninos')
             .select('id')
-            .eq('nombres_apellidos', nino.ninoNombre)
+            .eq('nombres_apellidos', sanitizarTexto(nino.ninoNombre))
             .maybeSingle();
             
           if (existingNino) {
@@ -645,11 +706,11 @@ export class Ingreso implements OnInit {
         }
 
         const ninoPayload = {
-          nombres_apellidos: nino.ninoNombre,
-          alias: nino.ninoAlias,
+          nombres_apellidos: sanitizarTexto(nino.ninoNombre),
+          alias: sanitizarTexto(nino.ninoAlias),
           fecha_nacimiento: nino.ninoFechaNacimiento,
-          codigo_especifico: nino.ninoCodigo,
-          notas: nino.ninoNotas
+          codigo_especifico: sanitizarTexto(nino.ninoCodigo),
+          notas: sanitizarTexto(nino.ninoNotas)
         };
 
         if (ninoIdFinal) {
@@ -708,13 +769,8 @@ export class Ingreso implements OnInit {
       }
 
       // Enviar mensaje de bienvenida por WhatsApp al tutor
-      if (values.tutorWhatsapp) {
-        let telefono = (values.tutorWhatsapp || '').toString().replace(/\D/g, '');
-        if (telefono.startsWith('0')) {
-          telefono = '593' + telefono.substring(1);
-        } else if (telefono.length === 9 && !telefono.startsWith('593')) {
-          telefono = '593' + telefono;
-        }
+      if (whatsappNormalizado) {
+        let telefono = whatsappNormalizado;
 
         let mensajeBienvenida = "Bienvenida/o a Vida Pequeña, disfruta de los juegos junto a tus pequeños";
         try {

@@ -5,6 +5,15 @@ import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angula
 import { interval, Subscription } from 'rxjs';
 import { trigger, transition, style, animate } from '@angular/animations';
 import { SupabaseService } from '../../../core/services/supabase/supabase';
+import { 
+  validarCorreo, 
+  validarTelefono, 
+  validarCedulaOPasaporte, 
+  normalizarTelefono, 
+  formatearTelefonoParaVista, 
+  sanitizarTexto, 
+  sanitizarCorreo 
+} from '../../../core/validators/custom-validators';
 
 // Interfaz para tipar los datos de la sesión
 export interface SesionJuego {
@@ -41,34 +50,45 @@ export interface SesionJuego {
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.css',
   host: {
-    '[@slideLeftRight]': '',
+    '[@fadeAnimation]': '',
     style: 'display: block; width: 100%;'
   },
   animations: [
-    trigger('slideLeftRight', [
+    trigger('fadeAnimation', [
       transition(':enter', [
-        style({ transform: 'translateX(-100%)', opacity: 0 }),
-        animate('400ms cubic-bezier(0.25, 1, 0.5, 1)', style({ transform: 'translateX(0)', opacity: 1 }))
+        style({ opacity: 0, transform: 'scale(0.98)' }),
+        animate('300ms ease-out', style({ opacity: 1, transform: 'scale(1)' }))
       ]),
       transition(':leave', [
-        style({ position: 'absolute', top: 0, left: 0, width: '100%', zIndex: -1 }),
-        animate('400ms cubic-bezier(0.25, 1, 0.5, 1)', style({ transform: 'translateX(-100%)', opacity: 0 }))
+        animate('200ms ease-in', style({ opacity: 0, transform: 'scale(0.98)' }))
       ])
     ])
   ]
 })
 export class Dashboard implements OnInit, OnDestroy {
-  // VARIABLE PARA SABER SI EL USUARIO ES ADMINISTRADOR
-  esAdmin: boolean = false;
-
   // Inyectamos nuestro servicio real y el enrutador
   private supabaseService = inject(SupabaseService);
   private router = inject(Router);
   private cdr = inject(ChangeDetectorRef);
   private platformId = inject(PLATFORM_ID);
+  private fb = inject(FormBuilder);
 
-  sesiones: SesionJuego[] = [];
-  cantidadVisibles: number = 0;
+  // Configuración y datos del usuario
+  saludoPersonalizado = 'Hola, Equipo';
+  rolUsuario = 'Encargada de Sala';
+  precioHoraBase = 7.00;
+  precioFraccionBase = 4.00;
+  precioAdultoExtra = 2.00;
+  precioPaqueteExtra: number = 3;
+  minutosToleranciaAlerta = 5;
+  tituloDashboard: string = 'Panel de Control - Sucursal Norte';
+  msgExpirado = '';
+  msgAdvertencia5min: string = '';
+  msgTiempoCumplido: string = '';
+  msgBienvenida: string = '';
+
+  // Usuario y estado
+  esAdmin: boolean = false;
   userGreeting: string = 'Cargando...';
   userName: string = '';
   avatarUrl: string | null = null;
@@ -76,15 +96,22 @@ export class Dashboard implements OnInit, OnDestroy {
   horaEntrada?: string;
   horaSalida?: string;
   cerrandoSesion: boolean = false;
-  precioPaqueteExtra: number = 3; // Valor por defecto
-  tituloDashboard: string = 'Panel de Control - Sucursal Norte';
-  msgAdvertencia5min: string = '';
-  msgTiempoCumplido: string = '';
-  msgBienvenida: string = '';
+
+  // Lista de sesiones activas en sala
+  sesiones: SesionJuego[] = [];
+  cantidadVisibles: number = 0;
+  isLoading = true;
+  haySesionesCargadas = false;
   private timerSubscription?: Subscription;
   private realtimeChannel: any;
 
-  // Variables para Toast
+  // Estado para el modal de extensión de tiempo
+  showExtensionDialog = false;
+  selectedSesionForExtension: SesionJuego | null = null;
+  tiempoExtensionSeleccionado: number = 30; // 30 o 60 min
+  isApplyingExtension = false;
+
+  // Toast / Alerta flotante
   showToast = false;
   toastMessage = '';
   toastType: 'success' | 'error' = 'success';
@@ -108,15 +135,14 @@ export class Dashboard implements OnInit, OnDestroy {
   showUpdateNinoDialog = false;
   isSavingNino = false;
 
-  private fb = inject(FormBuilder);
   tutorUpdateForm: FormGroup = this.fb.group({
     tutorNombre: ['', [Validators.required, Validators.minLength(4)]],
-    tutorCedula: ['', [Validators.required]],
+    tutorCedula: ['', [Validators.required, validarCedulaOPasaporte()]],
     tutorAlias: [''],
     tutorParentesco: ['', [Validators.required]],
-    tutorCorreo: ['', [Validators.email]],
+    tutorCorreo: ['', [validarCorreo()]],
     tutorContactoAdicional: [''],
-    tutorWhatsapp: ['', [Validators.required, Validators.pattern('^[0-9]{9,15}$')]]
+    tutorWhatsapp: ['', [Validators.required, validarTelefono()]]
   });
 
   ninoUpdateForm: FormGroup = this.fb.group({
@@ -265,8 +291,8 @@ export class Dashboard implements OnInit, OnDestroy {
 
   // 1. CONSULTA REAL A LA BASE DE DATOS
   async cargarSesionesActivas() {
-    const hace10Minutos = new Date(Date.now() - 600000).toISOString();
-    // Traemos sesiones activas, sesiones finalizadas recientes (últimos 10 min), Y todas las sesiones finalizadas que aún NO tengan tipología registrada
+    const hace3Minutos = new Date(Date.now() - 180000).toISOString();
+    // Traemos sesiones activas, sesiones finalizadas recientes (últimos 3 min), Y todas las sesiones finalizadas que aún NO tengan tipología u observaciones registradas
     const { data, error } = await this.supabaseService.db('sesiones_juego')
       .select(`
         id,
@@ -292,7 +318,7 @@ export class Dashboard implements OnInit, OnDestroy {
           )
         )
       `)
-      .or(`estado.eq.ACTIVO,tipologia.is.null,tipologia.eq.,and(estado.eq.FINALIZADO,salida_estimada_at.gte.${hace10Minutos})`);
+      .or(`estado.eq.ACTIVO,tipologia.is.null,tipologia.eq.,observaciones_tipologia.is.null,observaciones_tipologia.eq.,and(estado.eq.FINALIZADO,salida_estimada_at.gte.${hace3Minutos})`);
 
     if (error) {
       console.error('Error al cargar las sesiones:', error);
@@ -390,9 +416,10 @@ export class Dashboard implements OnInit, OnDestroy {
       const salida = sesion.horaSalidaEstimada.getTime();
       const diffMs = salida - ahora;
       const tieneTipologia = !!(sesion.tipologia && sesion.tipologia.trim() !== '' && sesion.tipologia !== '-');
+      const tieneObservaciones = !!(sesion.observacionesTipologia && sesion.observacionesTipologia.trim() !== '');
 
-      // Solo se oculta la tarjeta si pasaron 10 minutos Y YA SE REGISTRÓ LA TIPOLOGÍA
-      if (diffMs <= -600000 && tieneTipologia) {
+      // Solo se oculta la tarjeta si pasaron 3 minutos (180,000 ms) Y YA SE REGISTRÓ LA TIPOLOGÍA Y LAS OBSERVACIONES
+      if (diffMs <= -180000 && tieneTipologia && tieneObservaciones) {
         sesion.oculta = true;
       } else {
         sesion.oculta = false;
@@ -694,8 +721,13 @@ export class Dashboard implements OnInit, OnDestroy {
 
     if (error) {
       console.error('Error al guardar observaciones de tipología:', error);
+      this.mostrarToast('Hubo un error al guardar las observaciones.', 'error');
     } else {
       console.log('Observaciones de tipología guardadas:', observaciones);
+      if (observaciones && observaciones.trim() !== '') {
+        this.mostrarToast('Observaciones registradas exitosamente.', 'success');
+      }
+      this.actualizarTiempos(); // Si ya pasaron más de 3 min y tiene tipología, ahora sí se archivará
     }
   }
 
@@ -760,6 +792,42 @@ export class Dashboard implements OnInit, OnDestroy {
     }
   }
 
+  onBlurTutorCorreo() {
+    const ctrl = this.tutorUpdateForm.get('tutorCorreo');
+    if (ctrl && ctrl.value) {
+      ctrl.setValue(sanitizarCorreo(ctrl.value), { emitEvent: false });
+    }
+  }
+
+  onBlurTutorTelefono() {
+    const ctrl = this.tutorUpdateForm.get('tutorWhatsapp');
+    if (ctrl && ctrl.value) {
+      const normalizado = normalizarTelefono(ctrl.value);
+      if (normalizado && !ctrl.errors) {
+        ctrl.setValue(normalizado, { emitEvent: false });
+      }
+    }
+  }
+
+  onBlurTutorCedula() {
+    const ctrl = this.tutorUpdateForm.get('tutorCedula');
+    if (ctrl && ctrl.value) {
+      ctrl.setValue(sanitizarTexto(ctrl.value), { emitEvent: false });
+    }
+  }
+
+  onBlurTutorNombre() {
+    const ctrl = this.tutorUpdateForm.get('tutorNombre');
+    if (ctrl && ctrl.value) {
+      ctrl.setValue(sanitizarTexto(ctrl.value), { emitEvent: false });
+    }
+  }
+
+  obtenerVistaTelefonoTutor(): string {
+    const val = this.tutorUpdateForm.get('tutorWhatsapp')?.value;
+    return formatearTelefonoParaVista(val);
+  }
+
   async guardarNuevoTutor() {
     if (this.tutorUpdateForm.invalid || !this.selectedSesionForUpdate) {
       this.tutorUpdateForm.markAllAsTouched();
@@ -772,20 +840,24 @@ export class Dashboard implements OnInit, OnDestroy {
     let tutorIdFinal: string | null = null;
 
     try {
+      const cedulaSanitizada = sanitizarTexto(values.tutorCedula);
+      const whatsappNormalizado = normalizarTelefono(values.tutorWhatsapp);
+      const correoSanitizado = sanitizarCorreo(values.tutorCorreo);
+
       // 1. Buscar si el tutor ya existe o crearlo
       const { data: existingTutor } = await this.supabaseService.db('tutores')
         .select('id')
-        .eq('cedula', values.tutorCedula)
+        .eq('cedula', cedulaSanitizada)
         .maybeSingle();
 
       const tutorPayload = {
-        nombres_apellidos: values.tutorNombre,
-        cedula: values.tutorCedula,
-        alias: values.tutorAlias,
-        parentesco: values.tutorParentesco,
-        correo: values.tutorCorreo,
-        contacto_adicional_nombre: values.tutorContactoAdicional,
-        whatsapp: values.tutorWhatsapp
+        nombres_apellidos: sanitizarTexto(values.tutorNombre),
+        cedula: cedulaSanitizada,
+        alias: sanitizarTexto(values.tutorAlias),
+        parentesco: sanitizarTexto(values.tutorParentesco),
+        correo: correoSanitizado,
+        contacto_adicional_nombre: sanitizarTexto(values.tutorContactoAdicional),
+        whatsapp: whatsappNormalizado
       };
 
       if (existingTutor) {

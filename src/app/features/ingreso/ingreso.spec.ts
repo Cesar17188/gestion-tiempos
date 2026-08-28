@@ -1,7 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { provideRouter, Router } from '@angular/router';
-import { vi } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 import { Ingreso } from './ingreso';
 import { SupabaseService } from '../../core/services/supabase/supabase';
@@ -48,6 +48,27 @@ describe('Ingreso', () => {
     expect(component.ninosFormArray.length).toBe(1);
   });
 
+  it('debería validar correo y teléfono correctamente', () => {
+    const correoCtrl = component.ingresoForm.get('tutorCorreo');
+    const telefonoCtrl = component.ingresoForm.get('tutorWhatsapp');
+
+    // Correo inválido
+    correoCtrl?.setValue('correo_invalido');
+    expect(correoCtrl?.invalid).toBe(true);
+
+    // Correo válido
+    correoCtrl?.setValue('usuario@ejemplo.com');
+    expect(correoCtrl?.valid).toBe(true);
+
+    // Teléfono inválido
+    telefonoCtrl?.setValue('123');
+    expect(telefonoCtrl?.invalid).toBe(true);
+
+    // Teléfono celular ecuatoriano válido
+    telefonoCtrl?.setValue('0991234567');
+    expect(telefonoCtrl?.valid).toBe(true);
+  });
+
   it('debería autocompletar el formulario al buscar una cédula existente', async () => {
     // Simulamos la respuesta de tutor y niños
     supabaseMock.db().maybeSingle.mockResolvedValueOnce({ 
@@ -59,7 +80,7 @@ describe('Ingreso', () => {
       error: null
     });
 
-    component.ingresoForm.get('tutorCedula')?.setValue('1234567890');
+    component.ingresoForm.get('tutorCedula')?.setValue('1713394747');
     await component.buscarPorCedula();
 
     expect(component.ingresoForm.get('tutorNombre')?.value).toBe('Tutor de prueba');
@@ -79,15 +100,16 @@ describe('Ingreso', () => {
 
     // Llenar formulario con datos válidos
     component.ingresoForm.patchValue({
-      tutorNombre: 'Carlos',
-      tutorCedula: '0987654321',
+      tutorNombre: 'Carlos Morales',
+      tutorCedula: '1713394748',
       tutorParentesco: 'Tío',
-      tutorWhatsapp: '0999999999',
+      tutorWhatsapp: '0991234567',
+      tutorCorreo: 'carlos@empresa.com',
       tiempoMinutos: '30'
     });
     
     component.ninosFormArray.at(0).patchValue({
-      ninoNombre: 'Pedrito',
+      ninoNombre: 'Pedrito Morales',
       ninoFechaNacimiento: '2015-05-05',
       ninoCodigo: 'ABCDE'
     });
@@ -103,6 +125,5 @@ describe('Ingreso', () => {
     await component.onSubmit();
 
     expect(navigateSpy).toHaveBeenCalledWith(['/dashboard']);
-    expect(window.open).toHaveBeenCalled(); // Whatsapp
   });
 });

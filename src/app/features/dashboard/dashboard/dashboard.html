@@ -187,13 +187,24 @@
               <option value="Cuidadora del Desarrollo">4. Cuidadora del Desarrollo</option>
             </select>
 
-            <label
-              style="display: block; font-size: 0.85rem; font-weight: 600; color: #64748b; margin-top: 1rem; margin-bottom: 0.5rem;">
-              ¿Qué buscó hoy esta familia? / observaciones
-            </label>
+            <div class="flex items-center justify-between mt-3 mb-1.5">
+              <label style="display: block; font-size: 0.85rem; font-weight: 600; color: #64748b;">
+                ¿Qué buscó hoy esta familia? / observaciones:
+              </label>
+              @if (!sesion.observacionesTipologia || sesion.observacionesTipologia.trim() === '') {
+                <span class="text-[10px] bg-red-100 text-red-700 font-bold px-2 py-0.5 rounded-md animate-pulse border border-red-200">
+                  ⚠️ Requerido para cerrar
+                </span>
+              } @else {
+                <span class="text-[10px] bg-green-100 text-green-700 font-bold px-2 py-0.5 rounded-md border border-green-200">
+                  ✓ Registrado
+                </span>
+              }
+            </div>
             <textarea (blur)="guardarObservacionesTipologia(sesion, $event)"
               [value]="sesion.observacionesTipologia || ''" placeholder="Ej. Vino acompañada de varias amigas..."
-              style="width: 100%; padding: 0.5rem 0.75rem; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 0.9rem; background-color: white; outline: none; color: #334155; resize: vertical; min-height: 60px;"></textarea>
+              style="width: 100%; padding: 0.5rem 0.75rem; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 0.9rem; background-color: white; outline: none; color: #334155; resize: vertical; min-height: 60px;"
+              [ngStyle]="{'border-color': (!sesion.observacionesTipologia || sesion.observacionesTipologia.trim() === '') ? '#f87171' : '#e2e8f0', 'background-color': (!sesion.observacionesTipologia || sesion.observacionesTipologia.trim() === '') ? '#fef2f2' : 'white'}"></textarea>
           </div>
           }
         </div>
@@ -317,16 +328,16 @@
 
         <form [formGroup]="tutorUpdateForm" (ngSubmit)="guardarNuevoTutor()" class="space-y-5">
           <div>
-            <label class="block text-sm font-semibold text-gray-700">Cédula de Identidad</label>
+            <label class="block text-sm font-semibold text-gray-700">Cédula de Identidad / Pasaporte</label>
             <div class="mt-2 flex shadow-sm rounded-xl">
-              <input type="text" formControlName="tutorCedula"
+              <input type="text" formControlName="tutorCedula" (blur)="onBlurTutorCedula()"
                 class="flex-1 block w-full px-4 py-2 border border-gray-300 rounded-l-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
                 [ngClass]="{'border-red-300 bg-red-50': tutorUpdateForm.get('tutorCedula')?.invalid && tutorUpdateForm.get('tutorCedula')?.touched}"
-                placeholder="Ej. 1712345678" (keyup.enter)="buscarPorCedulaUpdate()">
+                placeholder="Ej. 1712345678 o Pasaporte" (keyup.enter)="buscarPorCedulaUpdate()">
               <button type="button" (click)="buscarPorCedulaUpdate()" [disabled]="isSearchingTutor"
-                class="px-4 py-2 bg-indigo-50 border border-l-0 border-indigo-200 text-indigo-700 font-semibold rounded-r-xl hover:bg-indigo-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors flex items-center justify-center min-w-[90px]">
+                class="px-4 py-2 bg-indigo-50 border border-l-0 border-indigo-200 text-indigo-700 font-semibold rounded-r-xl hover:bg-indigo-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors flex items-center justify-center min-w-[80px]">
                 @if (isSearchingTutor) {
-                <svg class="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <svg class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                   <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                   <path class="opacity-75" fill="currentColor"
                     d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
@@ -337,6 +348,12 @@
                 }
               </button>
             </div>
+            @if (tutorUpdateForm.get('tutorCedula')?.invalid && tutorUpdateForm.get('tutorCedula')?.touched) {
+            <p class="mt-1 text-xs text-red-600 font-medium flex items-center gap-1">
+              <svg class="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>
+              {{ tutorUpdateForm.get('tutorCedula')?.errors?.['required'] ? 'La cédula es obligatoria.' : (tutorUpdateForm.get('tutorCedula')?.errors?.['cedulaInvalida'] || 'Identificación inválida.') }}
+            </p>
+            }
             @if (searchTutorMessage) {
             <p class="mt-1.5 text-xs font-medium"
               [ngClass]="{'text-green-600': searchTutorMessage.includes('exitosamente'), 'text-amber-600': searchTutorMessage.includes('No se encontró'), 'text-red-600': searchTutorMessage.includes('Error') || searchTutorMessage.includes('Ingrese')}">
@@ -346,10 +363,16 @@
 
           <div>
             <label class="block text-sm font-semibold text-gray-700">Nombre Completo</label>
-            <input type="text" formControlName="tutorNombre"
+            <input type="text" formControlName="tutorNombre" (blur)="onBlurTutorNombre()"
               class="mt-2 block w-full px-4 py-2 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
               [ngClass]="{'border-red-300 bg-red-50': tutorUpdateForm.get('tutorNombre')?.invalid && tutorUpdateForm.get('tutorNombre')?.touched}"
               placeholder="Ej. Laura Sánchez">
+            @if (tutorUpdateForm.get('tutorNombre')?.invalid && tutorUpdateForm.get('tutorNombre')?.touched) {
+            <p class="mt-1 text-xs text-red-600 font-medium flex items-center gap-1">
+              <svg class="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>
+              El nombre completo es obligatorio (mínimo 4 caracteres).
+            </p>
+            }
           </div>
 
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -365,23 +388,46 @@
                 class="mt-2 block w-full px-4 py-2 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
                 [ngClass]="{'border-red-300 bg-red-50': tutorUpdateForm.get('tutorParentesco')?.invalid && tutorUpdateForm.get('tutorParentesco')?.touched}"
                 placeholder="Ej. Tía, Abuelo...">
+              @if (tutorUpdateForm.get('tutorParentesco')?.invalid && tutorUpdateForm.get('tutorParentesco')?.touched) {
+              <p class="mt-1 text-xs text-red-600 font-medium flex items-center gap-1">
+                <svg class="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>
+                El parentesco es obligatorio.
+              </p>
+              }
             </div>
           </div>
 
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label class="block text-sm font-semibold text-gray-700">WhatsApp de Contacto</label>
-              <input type="tel" formControlName="tutorWhatsapp"
+              <label class="block text-sm font-semibold text-gray-700">WhatsApp / Celular de Contacto</label>
+              <input type="tel" formControlName="tutorWhatsapp" (blur)="onBlurTutorTelefono()"
                 class="mt-2 block w-full px-4 py-2 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
                 [ngClass]="{'border-red-300 bg-red-50': tutorUpdateForm.get('tutorWhatsapp')?.invalid && tutorUpdateForm.get('tutorWhatsapp')?.touched}"
-                placeholder="Ej. 593991234567">
+                placeholder="Ej. 0991234567 o +593991234567">
+              @if (tutorUpdateForm.get('tutorWhatsapp')?.invalid && tutorUpdateForm.get('tutorWhatsapp')?.touched) {
+              <p class="mt-1 text-xs text-red-600 font-medium flex items-center gap-1">
+                <svg class="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>
+                {{ tutorUpdateForm.get('tutorWhatsapp')?.errors?.['telefonoInvalido'] || 'Ingrese un celular válido (ej. 0991234567 o +593991234567).' }}
+              </p>
+              } @else if (tutorUpdateForm.get('tutorWhatsapp')?.value) {
+              <p class="mt-1 text-xs text-indigo-600 font-medium flex items-center gap-1">
+                <span>📱 Formato WhatsApp:</span>
+                <span class="font-mono bg-indigo-50 px-1 py-0.5 rounded border border-indigo-100">{{ obtenerVistaTelefonoTutor() }}</span>
+              </p>
+              }
             </div>
             <div>
               <label class="block text-sm font-semibold text-gray-700">Correo Electrónico (Opcional)</label>
-              <input type="email" formControlName="tutorCorreo"
+              <input type="email" formControlName="tutorCorreo" (blur)="onBlurTutorCorreo()"
                 class="mt-2 block w-full px-4 py-2 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
                 [ngClass]="{'border-red-300 bg-red-50': tutorUpdateForm.get('tutorCorreo')?.invalid && tutorUpdateForm.get('tutorCorreo')?.touched}"
                 placeholder="Ej. laura@correo.com">
+              @if (tutorUpdateForm.get('tutorCorreo')?.invalid && tutorUpdateForm.get('tutorCorreo')?.touched) {
+              <p class="mt-1 text-xs text-red-600 font-medium flex items-center gap-1">
+                <svg class="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>
+                Correo inválido (ej. usuario&#64;ejemplo.com).
+              </p>
+              }
             </div>
           </div>
         </form>
