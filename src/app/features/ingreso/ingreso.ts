@@ -1,4 +1,4 @@
-import { Component, inject, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, FormArray, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -27,12 +27,13 @@ import { SupabaseService } from '../../core/services/supabase/supabase';
     ])
   ]
 })
-export class Ingreso {
+export class Ingreso implements OnInit {
   private fb = inject(FormBuilder);
   private supabaseService = inject(SupabaseService);
   private router = inject(Router);
   private cdr = inject(ChangeDetectorRef);
 
+  precioAdultoExtra = 2.00;
   isLoading = false;
   isSearching = false;
   errorMessage = '';
@@ -71,6 +72,34 @@ export class Ingreso {
     tiempoMinutos: ['30', [Validators.required]], // Por defecto 30 minutos
     adultosExtra: ['0', [Validators.min(0)]]
   });
+
+  async ngOnInit() {
+    await this.cargarTarifaAdultoExtra();
+  }
+
+  async cargarTarifaAdultoExtra() {
+    try {
+      const { data: config } = await this.supabaseService.db('configuracion_sistema')
+        .select('*')
+        .limit(1)
+        .maybeSingle();
+
+      if (config) {
+        const precio = config.precio_adulto_extra ?? config.precio_adulto;
+        if (precio !== undefined && precio !== null && !isNaN(Number(precio))) {
+          this.precioAdultoExtra = Number(precio);
+        }
+      } else if (typeof window !== 'undefined' && window.localStorage) {
+        const localAdulto = localStorage.getItem('precio_adulto_extra');
+        if (localAdulto && !isNaN(parseFloat(localAdulto))) {
+          this.precioAdultoExtra = parseFloat(localAdulto);
+        }
+      }
+      this.cdr.detectChanges();
+    } catch (e) {
+      console.error('Error al cargar tarifa de adulto extra:', e);
+    }
+  }
 
   abrirDialogo(
     titulo: string,
@@ -157,6 +186,12 @@ export class Ingreso {
         errores.push(`Fecha de nacimiento requerida para Niño(a) #${numNino}.`);
       }
     });
+
+    // 3. Validar configuración de tarifa
+    const adultosExtra = this.ingresoForm.get('adultosExtra');
+    if (adultosExtra?.invalid) {
+      errores.push('El número de acompañantes adultos extras no puede ser negativo.');
+    }
 
     return errores;
   }
@@ -652,7 +687,7 @@ export class Ingreso {
         const horaSalidaEstimada = new Date(horaIngreso.getTime() + totalMinutos * 60000);
         
         const adultosAdicionales = parseInt(values.adultosExtra || '0');
-        const costoExtraInicial = adultosAdicionales * 2.00;
+        const costoExtraInicial = adultosAdicionales * this.precioAdultoExtra;
         const costoBase = minutosAAgregar === 60 ? 10 : 7;
 
         const { error: sesionError } = await this.supabaseService.db('sesiones_juego')

@@ -51,6 +51,7 @@ export class AdminConfig implements OnInit {
       precio_base: [0, [Validators.required, Validators.min(0)]],
       minutos_base: [30, [Validators.required, Validators.min(1)]],
       precio_minuto_extra: [3, [Validators.required, Validators.min(0)]],
+      precio_adulto_extra: [2, [Validators.required, Validators.min(0)]],
       msg_bienvenida: ['', Validators.required],
       msg_advertencia_5min: ['', Validators.required],
       msg_tiempo_cumplido: ['', Validators.required],
@@ -102,10 +103,22 @@ export class AdminConfig implements OnInit {
             tituloGuardado = localStorage.getItem('titulo_dashboard') || 'Panel de Control - Sucursal Norte';
           }
 
+          let precioAdulto = config.precio_adulto_extra ?? config.precio_adulto;
+          if (precioAdulto === undefined || precioAdulto === null) {
+            if (typeof window !== 'undefined' && window.localStorage) {
+              const localAdulto = localStorage.getItem('precio_adulto_extra');
+              if (localAdulto) precioAdulto = parseFloat(localAdulto);
+            }
+          }
+          if (precioAdulto === undefined || precioAdulto === null || isNaN(Number(precioAdulto))) {
+            precioAdulto = 2;
+          }
+
           this.configForm.patchValue({
             precio_base: config.precio_base ?? 0,
             minutos_base: config.minutos_base ?? 30,
             precio_minuto_extra: config.precio_minuto_extra ?? 3,
+            precio_adulto_extra: Number(precioAdulto),
             msg_bienvenida: config.msg_bienvenida ?? '',
             msg_advertencia_5min: config.msg_advertencia_5min ?? '',
             msg_tiempo_cumplido: config.msg_tiempo_cumplido ?? '',
@@ -147,6 +160,11 @@ export class AdminConfig implements OnInit {
       if (this.columnasDisponibles.size === 0 || this.columnasDisponibles.has('precio_minuto_extra')) {
         payload['precio_minuto_extra'] = Number(formVal.precio_minuto_extra);
       }
+      if (this.columnasDisponibles.has('precio_adulto_extra')) {
+        payload['precio_adulto_extra'] = Number(formVal.precio_adulto_extra);
+      } else if (this.columnasDisponibles.has('precio_adulto')) {
+        payload['precio_adulto'] = Number(formVal.precio_adulto_extra);
+      }
       if (this.columnasDisponibles.size === 0 || this.columnasDisponibles.has('msg_bienvenida')) {
         payload['msg_bienvenida'] = formVal.msg_bienvenida;
       }
@@ -160,9 +178,14 @@ export class AdminConfig implements OnInit {
         payload['titulo_dashboard'] = formVal.titulo_dashboard;
       }
 
-      // Guardado local persistente del título
-      if (typeof window !== 'undefined' && window.localStorage && formVal.titulo_dashboard) {
-        localStorage.setItem('titulo_dashboard', formVal.titulo_dashboard);
+      // Guardado local persistente del título y precio adulto extra
+      if (typeof window !== 'undefined' && window.localStorage) {
+        if (formVal.titulo_dashboard) {
+          localStorage.setItem('titulo_dashboard', formVal.titulo_dashboard);
+        }
+        if (formVal.precio_adulto_extra !== undefined && formVal.precio_adulto_extra !== null) {
+          localStorage.setItem('precio_adulto_extra', formVal.precio_adulto_extra.toString());
+        }
       }
 
       const updatePromise = this.supabase.from('configuracion_sistema')

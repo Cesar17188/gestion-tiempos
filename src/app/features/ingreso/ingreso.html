@@ -203,14 +203,22 @@
           <h2 class="text-lg font-bold text-gray-800">Configuración de la Tarifa y Notas</h2>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div class="md:col-span-1">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
             <label class="block text-sm font-semibold text-gray-700">Tiempo de Juego Base</label>
             <select formControlName="tiempoMinutos"
                     class="mt-2 block w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm">
               <option value="30">30 Minutos (Media hora)</option>
               <option value="60">60 Minutos (1 Hora)</option>
             </select>
+          </div>
+
+          <div>
+            <label class="block text-sm font-semibold text-gray-700">Acompañantes Adultos Extras</label>
+            <input type="number" formControlName="adultosExtra" min="0"
+                   class="mt-2 block w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                   placeholder="0">
+            <p class="mt-1.5 text-xs text-gray-400">Cargo adicional de ${{ precioAdultoExtra | number:'1.2-2' }} por cada adulto extra.</p>
           </div>
         </div>
 
