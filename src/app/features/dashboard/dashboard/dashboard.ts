@@ -78,6 +78,9 @@ export class Dashboard implements OnInit, OnDestroy {
   cerrandoSesion: boolean = false;
   precioPaqueteExtra: number = 3; // Valor por defecto
   tituloDashboard: string = 'Panel de Control - Sucursal Norte';
+  msgAdvertencia5min: string = '';
+  msgTiempoCumplido: string = '';
+  msgBienvenida: string = '';
   private timerSubscription?: Subscription;
   private realtimeChannel: any;
 
@@ -148,9 +151,9 @@ export class Dashboard implements OnInit, OnDestroy {
 
   async cargarConfiguracion() {
     try {
-      const { data } = await this.supabaseService.db('configuracion_sistema').select('*').eq('id', 1).single();
+      const { data } = await this.supabaseService.db('configuracion_sistema').select('*').limit(1).maybeSingle();
       if (data) {
-        if (data.precio_minuto_extra !== undefined) {
+        if (data.precio_minuto_extra !== undefined && data.precio_minuto_extra !== null) {
           this.precioPaqueteExtra = data.precio_minuto_extra;
         }
         if (data.titulo_dashboard) {
@@ -158,6 +161,15 @@ export class Dashboard implements OnInit, OnDestroy {
         } else if (typeof window !== 'undefined' && window.localStorage) {
           const localTitle = localStorage.getItem('titulo_dashboard');
           if (localTitle) this.tituloDashboard = localTitle;
+        }
+        if (data.msg_advertencia_5min) {
+          this.msgAdvertencia5min = data.msg_advertencia_5min;
+        }
+        if (data.msg_tiempo_cumplido) {
+          this.msgTiempoCumplido = data.msg_tiempo_cumplido;
+        }
+        if (data.msg_bienvenida) {
+          this.msgBienvenida = data.msg_bienvenida;
         }
       }
     } catch (e) {
@@ -254,7 +266,7 @@ export class Dashboard implements OnInit, OnDestroy {
   // 1. CONSULTA REAL A LA BASE DE DATOS
   async cargarSesionesActivas() {
     const hace10Minutos = new Date(Date.now() - 600000).toISOString();
-    // Usamos la potencia de PostgREST para hacer el JOIN de las 3 tablas
+    // Traemos sesiones activas, sesiones finalizadas recientes (últimos 10 min), Y todas las sesiones finalizadas que aún NO tengan tipología registrada
     const { data, error } = await this.supabaseService.db('sesiones_juego')
       .select(`
         id,
@@ -280,7 +292,7 @@ export class Dashboard implements OnInit, OnDestroy {
           )
         )
       `)
-      .or(`estado.eq.ACTIVO,and(estado.eq.FINALIZADO,salida_estimada_at.gte.${hace10Minutos})`);
+      .or(`estado.eq.ACTIVO,tipologia.is.null,tipologia.eq.,and(estado.eq.FINALIZADO,salida_estimada_at.gte.${hace10Minutos})`);
 
     if (error) {
       console.error('Error al cargar las sesiones:', error);
@@ -377,8 +389,10 @@ export class Dashboard implements OnInit, OnDestroy {
     this.sesiones.forEach(sesion => {
       const salida = sesion.horaSalidaEstimada.getTime();
       const diffMs = salida - ahora;
+      const tieneTipologia = !!(sesion.tipologia && sesion.tipologia.trim() !== '' && sesion.tipologia !== '-');
 
-      if (diffMs <= -600000) { // 10 minutos
+      // Solo se oculta la tarjeta si pasaron 10 minutos Y YA SE REGISTRÓ LA TIPOLOGÍA
+      if (diffMs <= -600000 && tieneTipologia) {
         sesion.oculta = true;
       } else {
         sesion.oculta = false;
@@ -435,17 +449,98 @@ export class Dashboard implements OnInit, OnDestroy {
   }
 
   // 4. GENERADOR DE WHATSAPP
-  enviarWhatsApp(sesion: SesionJuego) {
+  async enviarWhatsApp(sesion: SesionJuego) {
+    let telefono = (sesion.whatsapp || '').toString().replace(/\D/g, '');
+
+    // Fallback: si por alguna razón no vino en el join de sesión, consultarlo directamente
+    if (!telefono && sesion.ninoId) {
+      try {
+        const { data: ninoData } = await this.supabaseService.db('ninos')
+          .select('tutores(whatsapp)')
+          .eq('id', sesion.ninoId)
+          .maybeSingle();
+
+        const tutoresArr = (ninoData as any)?.tutores;
+        const tut = Array.isArray(tutoresArr) ? tutoresArr[tutoresArr.length - 1] : tutoresArr;
+        if (tut?.whatsapp) {
+          telefono = (tut.whatsapp || '').toString().replace(/\D/g, '');
+          sesion.whatsapp = tut.whatsapp;
+        }
+      } catch (e) {
+        console.error('Error recuperando WhatsApp del tutor:', e);
+      }
+    }
+
+    // Normalizar formato de teléfono (prefijo Ecuador 593 si inicia con 0 o 9 dígitos)
+    if (telefono.startsWith('0')) {
+      telefono = '593' + telefono.substring(1);
+    } else if (telefono.length === 9 && !telefono.startsWith('593')) {
+      telefono = '593' + telefono;
+    }
+
+    if (!telefono) {
+      this.mostrarToast('No se encontró un número de WhatsApp registrado para este tutor.', 'error');
+      return;
+    }
+
+    if (!this.msgTiempoCumplido && !this.msgAdvertencia5min) {
+      await this.cargarConfiguracion();
+    }
+
+    const preferidoNino = (sesion.aliasNino && sesion.aliasNino.trim())
+      ? sesion.aliasNino.trim()
+      : (sesion.nombreNino || '').trim();
+
+    const preferidoTutor = (sesion.aliasTutor && sesion.aliasTutor.trim())
+      ? sesion.aliasTutor.trim()
+      : (sesion.nombreTutor || '').trim();
+
     let mensaje = '';
     if (sesion.estadoAlerta === 'expirado') {
-      mensaje = `Hola, te informamos que el tiempo de juego de *${sesion.nombreNino}* ha concluido. ¿Deseas extender el paquete? (Opciones de pago: transferencia o efectivo en caja).`;
+      if (this.msgTiempoCumplido && this.msgTiempoCumplido.trim() !== '') {
+        mensaje = this.msgTiempoCumplido;
+        // Nombre preferido / Diminutivo Niño
+        mensaje = mensaje.replace(/\{nombre_preferido_nino\}|\{diminutivo_nino\}|\{alias_nino\}|\{preferido_nino\}|\[nombre_preferido_nino\]|\[diminutivo_nino\]|\[alias_nino\]|\[preferido_nino\]/gi, `*${preferidoNino}*`);
+        // Nombre preferido / Diminutivo Tutor / Adulto
+        mensaje = mensaje.replace(/\{nombre_preferido_tutor\}|\{diminutivo_tutor\}|\{alias_tutor\}|\{preferido_tutor\}|\{nombre_preferido_adulto\}|\{diminutivo_adulto\}|\[nombre_preferido_tutor\]|\[diminutivo_tutor\]|\[alias_tutor\]|\[preferido_tutor\]|\[nombre_preferido_adulto\]|\[diminutivo_adulto\]/gi, preferidoTutor);
+        // Nombre Completo Niño
+        mensaje = mensaje.replace(/\{nombre_nino\}|\{nino\}|\{niño\}|\{nombre_niño\}|\[nombre_nino\]|\[nino\]|\[niño\]|\[nombre_niño\]/gi, `*${sesion.nombreNino || preferidoNino}*`);
+        // Nombre Completo Tutor / Adulto
+        mensaje = mensaje.replace(/\{nombre_tutor\}|\{tutor\}|\{nombre_adulto\}|\{adulto\}|\[nombre_tutor\]|\[tutor\]|\[nombre_adulto\]|\[adulto\]/gi, sesion.nombreTutor || preferidoTutor);
+        // Minutos
+        mensaje = mensaje.replace(/\{minutos\}|\{tiempo\}|\[minutos\]|\[tiempo\]/gi, '0');
+      } else {
+        mensaje = `Hola, te informamos que el tiempo de juego de *${preferidoNino}* ha concluido. ¿Deseas extender el paquete? (Opciones de pago: transferencia o efectivo en caja).`;
+      }
     } else {
-      mensaje = `Hola, te informamos que el tiempo de juego de *${sesion.nombreNino}* terminará en aproximadamente ${sesion.minutosRestantes} minutos. ¿Deseas extender el paquete?`;
+      if (this.msgAdvertencia5min && this.msgAdvertencia5min.trim() !== '') {
+        mensaje = this.msgAdvertencia5min;
+        // Nombre preferido / Diminutivo Niño
+        mensaje = mensaje.replace(/\{nombre_preferido_nino\}|\{diminutivo_nino\}|\{alias_nino\}|\{preferido_nino\}|\[nombre_preferido_nino\]|\[diminutivo_nino\]|\[alias_nino\]|\[preferido_nino\]/gi, `*${preferidoNino}*`);
+        // Nombre preferido / Diminutivo Tutor / Adulto
+        mensaje = mensaje.replace(/\{nombre_preferido_tutor\}|\{diminutivo_tutor\}|\{alias_tutor\}|\{preferido_tutor\}|\{nombre_preferido_adulto\}|\{diminutivo_adulto\}|\[nombre_preferido_tutor\]|\[diminutivo_tutor\]|\[alias_tutor\]|\[preferido_tutor\]|\[nombre_preferido_adulto\]|\[diminutivo_adulto\]/gi, preferidoTutor);
+        // Nombre Completo Niño
+        mensaje = mensaje.replace(/\{nombre_nino\}|\{nino\}|\{niño\}|\{nombre_niño\}|\[nombre_nino\]|\[nino\]|\[niño\]|\[nombre_niño\]/gi, `*${sesion.nombreNino || preferidoNino}*`);
+        // Nombre Completo Tutor / Adulto
+        mensaje = mensaje.replace(/\{nombre_tutor\}|\{tutor\}|\{nombre_adulto\}|\{adulto\}|\[nombre_tutor\]|\[tutor\]|\[nombre_adulto\]|\[adulto\]/gi, sesion.nombreTutor || preferidoTutor);
+        // Minutos
+        mensaje = mensaje.replace(/\{minutos\}|\{tiempo\}|\[minutos\]|\[tiempo\]/gi, (sesion.minutosRestantes || 5).toString());
+      } else {
+        mensaje = `Hola, te informamos que el tiempo de juego de *${preferidoNino}* terminará en aproximadamente ${sesion.minutosRestantes} minutos. ¿Deseas extender el paquete?`;
+      }
     }
 
     const mensajeCodificado = encodeURIComponent(mensaje);
-    const url = `https://wa.me/${sesion.whatsapp}?text=${mensajeCodificado}`;
-    window.open(url, '_blank');
+    const url = `https://api.whatsapp.com/send?phone=${telefono}&text=${mensajeCodificado}`;
+
+    // Crear y disparar link dinámico para evitar bloqueos de popup en navegadores
+    const link = document.createElement('a');
+    link.href = url;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   }
 
   // ACTUALIZACIÓN DE ESTADO A FINALIZADO AUTOMÁTICA
@@ -581,6 +676,8 @@ export class Dashboard implements OnInit, OnDestroy {
       this.mostrarToast('Hubo un error al guardar la tipología del cliente.', 'error');
     } else {
       console.log('Tipología guardada:', tipologia);
+      this.mostrarToast('Tipología del cliente registrada exitosamente.', 'success');
+      this.actualizarTiempos(); // Si ya habían pasado más de 10 min, al tener tipología ahora sí se archivará
     }
   }
 

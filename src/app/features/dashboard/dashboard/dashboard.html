@@ -86,7 +86,7 @@
               <div class="person-info-block child-block">
                 @if (sesion.aliasNino) {
                 <div class="info-row">
-                  <span class="info-label">Apodo del niño:</span>
+                  <span class="info-label">Nombre preferido / diminutivo:</span>
                   <span class="info-value child-alias">"{{ sesion.aliasNino }}"</span>
                 </div>
                 }
@@ -99,7 +99,7 @@
               <div class="person-info-block tutor-block">
                 @if (sesion.aliasTutor) {
                 <div class="info-row">
-                  <span class="info-label">Apodo del tutor:</span>
+                  <span class="info-label">Nombre preferido / diminutivo:</span>
                   <span class="info-value tutor-alias">"{{ sesion.aliasTutor }}"</span>
                 </div>
                 }
@@ -163,12 +163,24 @@
 
           @if (sesion.estadoAlerta === 'expirado') {
           <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid rgba(0,0,0,0.05);">
-            <label style="display: block; font-size: 0.85rem; font-weight: 600; color: #64748b; margin-bottom: 0.5rem;">
-              Tipología del Cliente:
-            </label>
+            <div class="flex items-center justify-between mb-1.5">
+              <label style="display: block; font-size: 0.85rem; font-weight: 600; color: #64748b;">
+                Tipología del Cliente:
+              </label>
+              @if (!sesion.tipologia || sesion.tipologia === '' || sesion.tipologia === '-') {
+                <span class="text-[10px] bg-red-100 text-red-700 font-bold px-2 py-0.5 rounded-md animate-pulse border border-red-200">
+                  ⚠️ Requerido para cerrar
+                </span>
+              } @else {
+                <span class="text-[10px] bg-green-100 text-green-700 font-bold px-2 py-0.5 rounded-md border border-green-200">
+                  ✓ Registrado
+                </span>
+              }
+            </div>
             <select (change)="guardarTipologia(sesion, $event)" [value]="sesion.tipologia || ''"
-              style="width: 100%; padding: 0.5rem 0.75rem; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 0.9rem; background-color: white; outline: none; cursor: pointer; color: #334155;">
-              <option value="" disabled>Seleccionar tipo...</option>
+              style="width: 100%; padding: 0.5rem 0.75rem; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 0.9rem; background-color: white; outline: none; cursor: pointer; color: #334155;"
+              [ngStyle]="{'border-color': (!sesion.tipologia || sesion.tipologia === '' || sesion.tipologia === '-') ? '#f87171' : '#e2e8f0', 'background-color': (!sesion.tipologia || sesion.tipologia === '' || sesion.tipologia === '-') ? '#fef2f2' : 'white'}">
+              <option value="" disabled selected>Seleccionar tipología...</option>
               <option value="Mamá Respiro">1. Mamá Respiro</option>
               <option value="Mamá Social">2. Mamá Social</option>
               <option value="Familia Moderna">3. Familia Moderna</option>
@@ -342,7 +354,7 @@
 
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label class="block text-sm font-semibold text-gray-700">Alias (Apodo)</label>
+              <label class="block text-sm font-semibold text-gray-700">Nombre preferido / diminutivo</label>
               <input type="text" formControlName="tutorAlias"
                 class="mt-2 block w-full px-4 py-2 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
                 placeholder="Ej. Mamá Laura">
@@ -371,13 +383,6 @@
                 [ngClass]="{'border-red-300 bg-red-50': tutorUpdateForm.get('tutorCorreo')?.invalid && tutorUpdateForm.get('tutorCorreo')?.touched}"
                 placeholder="Ej. laura@correo.com">
             </div>
-          </div>
-
-          <div>
-            <label class="block text-sm font-semibold text-gray-700">Contacto Adicional (Opcional)</label>
-            <input type="text" formControlName="tutorContactoAdicional"
-              class="mt-2 block w-full px-4 py-2 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
-              placeholder="Ej. Nombre y número de la madre u otro familiar">
           </div>
         </form>
       </div>
@@ -440,7 +445,7 @@
 
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label class="block text-sm font-semibold text-gray-700">Alias (Apodo)</label>
+              <label class="block text-sm font-semibold text-gray-700">Nombre preferido / diminutivo</label>
               <input type="text" formControlName="ninoAlias"
                 class="mt-2 block w-full px-4 py-2 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
                 placeholder="Ej. Juanito">

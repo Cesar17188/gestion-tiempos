@@ -56,7 +56,7 @@
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label class="block text-sm font-semibold text-gray-700">Alias (Apodo)</label>
+              <label class="block text-sm font-semibold text-gray-700">Nombre preferido / diminutivo</label>
               <input type="text" formControlName="tutorAlias"
                      class="mt-2 block w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
                      placeholder="Ej. Mamá Laura">
@@ -76,14 +76,6 @@
                    class="mt-2 block w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
                    [ngClass]="{'border-red-300 bg-red-50': ingresoForm.get('tutorCorreo')?.invalid && ingresoForm.get('tutorCorreo')?.touched}"
                    placeholder="Ej. laura@correo.com">
-          </div>
-
-          <div>
-            <label class="block text-sm font-semibold text-gray-700">Contacto Adicional (Opcional)</label>
-            <input type="text" formControlName="tutorContactoAdicional"
-                   class="mt-2 block w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
-                   placeholder="Ej. Nombre y número de la madre u otro familiar">
-            <p class="mt-1.5 text-xs text-gray-400">Si el adulto responsable no es la madre, preferentemente ingrese aquí el nombre de la madre.</p>
           </div>
 
           <div>
@@ -110,6 +102,17 @@
                 <span class="h-8 w-8 bg-pink-100 text-pink-600 rounded-lg flex items-center justify-center font-bold mr-3 text-sm">2</span>
                 <h2 class="text-lg font-bold text-gray-800">Datos del Niño / Niña {{ i + 1 }}</h2>
               </div>
+
+              @if (ninoCtrl.get('sesionActivaInfo')?.value?.activa) {
+                <div class="p-3.5 bg-amber-50 border border-amber-300 rounded-xl flex items-start gap-2.5 text-amber-900 text-sm">
+                  <svg class="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+                  </svg>
+                  <div>
+                    <strong class="font-bold">Sesión en progreso:</strong> Este niño(a) ya tiene una sesión de juego activa que finaliza aprox. a las <strong>{{ ninoCtrl.get('sesionActivaInfo')?.value?.salidaEstimada }}</strong>. Debe terminar antes de registrar un nuevo ingreso.
+                  </div>
+                </div>
+              }
 
               <div>
                 <label class="block text-sm font-semibold text-gray-700">Nombres y Apellidos</label>
@@ -154,7 +157,7 @@
 
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label class="block text-sm font-semibold text-gray-700">Alias (Apodo)</label>
+                  <label class="block text-sm font-semibold text-gray-700">Nombre preferido / diminutivo</label>
                   <input type="text" formControlName="ninoAlias"
                          class="mt-2 block w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
                          placeholder="Ej. Mate">
@@ -208,16 +211,6 @@
               <option value="30">30 Minutos (Media hora)</option>
               <option value="60">60 Minutos (1 Hora)</option>
             </select>
-          </div>
-
-
-
-          <div class="md:col-span-1">
-            <label class="block text-sm font-semibold text-gray-700">Adultos Extra</label>
-            <input type="number" formControlName="adultosExtra" min="0"
-                   class="mt-2 block w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
-                   placeholder="Ej. 1">
-            <p class="mt-1.5 text-xs text-gray-400">Si hay más de 2 adultos. (Costo: $2 por cada adulto extra).</p>
           </div>
         </div>
 

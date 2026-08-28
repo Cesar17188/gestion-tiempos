@@ -172,8 +172,44 @@ export class Ingreso {
       ninoAlias: [''],
       ninoFechaNacimiento: ['', [Validators.required]],
       ninoCodigo: [this.generarCodigoNino(), [Validators.required]],
-      ninoNotas: [''] // Alergias, observaciones, quién lo retira, etc.
+      ninoNotas: [''], // Alergias, observaciones, quién lo retira, etc.
+      sesionActivaInfo: [null]
     });
+  }
+
+  async verificarSesionesActivasNino(ninoId: string): Promise<{ activa: boolean; salidaEstimada?: string } | null> {
+    if (!ninoId) return null;
+    try {
+      const { data, error } = await this.supabaseService.db('sesiones_juego')
+        .select('id, salida_estimada_at, estado')
+        .eq('nino_id', ninoId)
+        .eq('estado', 'ACTIVO')
+        .order('salida_estimada_at', { ascending: false });
+
+      if (error || !data || data.length === 0) return null;
+
+      const ahora = new Date();
+      for (const sesion of data) {
+        const salida = new Date(sesion.salida_estimada_at);
+        if (salida > ahora) {
+          const horas = salida.getHours().toString().padStart(2, '0');
+          const minutos = salida.getMinutes().toString().padStart(2, '0');
+          return {
+            activa: true,
+            salidaEstimada: `${horas}:${minutos}`
+          };
+        } else {
+          // Sesión con tiempo transcurrido en el pasado que no se había cerrado
+          await this.supabaseService.db('sesiones_juego')
+            .update({ estado: 'FINALIZADO' })
+            .eq('id', sesion.id);
+        }
+      }
+      return null;
+    } catch (e) {
+      console.error('Error al verificar sesión activa:', e);
+      return null;
+    }
   }
 
   agregarNino() {
@@ -239,7 +275,7 @@ export class Ingreso {
 
         if (ninosData && ninosData.length > 0 && !ninosError) {
           this.ninosFormArray.clear();
-          ninosData.forEach((nino) => {
+          for (const nino of ninosData) {
             const ninoGroup = this.crearNinoFormGroup();
             
             // Formatear la fecha a YYYY-MM-DD para el input type="date"
@@ -248,16 +284,19 @@ export class Ingreso {
               fechaParsed = nino.fecha_nacimiento.split('T')[0];
             }
 
+            const sesionActiva = await this.verificarSesionesActivasNino(nino.id);
+
             ninoGroup.patchValue({
               ninoId: nino.id,
               ninoNombre: nino.nombres_apellidos || '',
               ninoAlias: nino.alias || '',
               ninoFechaNacimiento: fechaParsed,
               ninoCodigo: nino.codigo_especifico || ninoGroup.get('ninoCodigo')?.value,
-              ninoNotas: nino.notas || ''
+              ninoNotas: nino.notas || '',
+              sesionActivaInfo: sesionActiva
             });
             this.ninosFormArray.push(ninoGroup);
-          });
+          }
           this.searchMessage = `Datos cargados exitosamente. Se encontraron ${ninosData.length} niño(s).`;
         } else {
           this.searchMessage = 'Tutor encontrado exitosamente, pero no tiene niños registrados aún.';
@@ -401,22 +440,26 @@ export class Ingreso {
 
           if (todosNinosData && todosNinosData.length > 0 && !todosNinosError) {
             this.ninosFormArray.clear();
-            todosNinosData.forEach((nino: any) => {
+            for (const nino of todosNinosData) {
               const ninoGroup = this.crearNinoFormGroup();
               let fechaParsed = '';
               if (nino.fecha_nacimiento) {
                 fechaParsed = nino.fecha_nacimiento.split('T')[0];
               }
+
+              const sesionActiva = await this.verificarSesionesActivasNino(nino.id);
+
               ninoGroup.patchValue({
                 ninoId: nino.id,
                 ninoNombre: nino.nombres_apellidos || '',
                 ninoAlias: nino.alias || '',
                 ninoFechaNacimiento: fechaParsed,
                 ninoCodigo: nino.codigo_especifico || ninoGroup.get('ninoCodigo')?.value,
-                ninoNotas: nino.notas || ''
+                ninoNotas: nino.notas || '',
+                sesionActivaInfo: sesionActiva
               });
               this.ninosFormArray.push(ninoGroup);
-            });
+            }
             this.searchNinoMessage = `Datos del tutor y ${todosNinosData.length} niño(s) cargados exitosamente.`;
           }
         } catch (error) {
@@ -449,6 +492,62 @@ export class Ingreso {
     this.cdr.detectChanges();
 
     const values = this.ingresoForm.value;
+
+    // 0. VERIFICAR DUPLICADOS EN EL FORMULARIO Y SESIONES ACTIVAS PREVIAS
+    const nombresEnFormulario = values.ninos.map((n: any) => (n.ninoNombre || '').trim().toLowerCase());
+    const nombresDuplicados = nombresEnFormulario.filter((item: string, index: number) => item && nombresEnFormulario.indexOf(item) !== index);
+    if (nombresDuplicados.length > 0) {
+      this.isLoading = false;
+      await this.abrirDialogo(
+        'Niño Repetido en el Registro',
+        'Has incluido al mismo niño más de una vez en este formulario. Por favor remueve los campos duplicados.',
+        [],
+        'warning',
+        'Revisar'
+      );
+      return;
+    }
+
+    try {
+      const ninosConSesionActiva: string[] = [];
+
+      for (const nino of values.ninos) {
+        let ninoIdAValidar = nino.ninoId;
+        if (!ninoIdAValidar && nino.ninoNombre) {
+          const { data: existingNino } = await this.supabaseService.db('ninos')
+            .select('id')
+            .ilike('nombres_apellidos', nino.ninoNombre.trim())
+            .maybeSingle();
+          if (existingNino) {
+            ninoIdAValidar = existingNino.id;
+          }
+        }
+
+        if (ninoIdAValidar) {
+          const sesionActiva = await this.verificarSesionesActivasNino(ninoIdAValidar);
+          if (sesionActiva && sesionActiva.activa) {
+            ninosConSesionActiva.push(
+              `"${nino.ninoNombre}" (Sesión activa hasta las ${sesionActiva.salidaEstimada})`
+            );
+          }
+        }
+      }
+
+      if (ninosConSesionActiva.length > 0) {
+        this.isLoading = false;
+        await this.abrirDialogo(
+          'Sesión en Curso Detectada',
+          'No se puede registrar el ingreso porque el niño(a) ya se encuentra jugando en una sesión activa. Debes esperar a que acabe o finalizarla desde el panel de control antes de un nuevo ingreso:',
+          ninosConSesionActiva,
+          'warning',
+          'Entendido'
+        );
+        return;
+      }
+    } catch (verifError) {
+      console.error('Error validando sesiones activas:', verifError);
+    }
+
     let tutorIdFinal: string | null = null;
     let ninosIdsCreados: string[] = [];
 
@@ -575,10 +674,63 @@ export class Ingreso {
 
       // Enviar mensaje de bienvenida por WhatsApp al tutor
       if (values.tutorWhatsapp) {
-        const mensajeBienvenida = "Bienvenida/o a Vida Pequeña, disfruta de los juegos junto a tus pequeños";
+        let telefono = (values.tutorWhatsapp || '').toString().replace(/\D/g, '');
+        if (telefono.startsWith('0')) {
+          telefono = '593' + telefono.substring(1);
+        } else if (telefono.length === 9 && !telefono.startsWith('593')) {
+          telefono = '593' + telefono;
+        }
+
+        let mensajeBienvenida = "Bienvenida/o a Vida Pequeña, disfruta de los juegos junto a tus pequeños";
+        try {
+          const { data: config } = await this.supabaseService.db('configuracion_sistema')
+            .select('msg_bienvenida')
+            .limit(1)
+            .maybeSingle();
+
+          if (config?.msg_bienvenida && config.msg_bienvenida.trim() !== '') {
+            mensajeBienvenida = config.msg_bienvenida;
+
+            const preferidoTutor = (values.tutorAlias && values.tutorAlias.trim()) 
+              ? values.tutorAlias.trim() 
+              : (values.tutorNombre || '').trim();
+
+            const nombresPreferidosNinos = values.ninos
+              .map((n: any) => (n.ninoAlias && n.ninoAlias.trim()) ? n.ninoAlias.trim() : n.ninoNombre)
+              .filter(Boolean)
+              .join(', ');
+
+            const nombresCompletosNinos = values.ninos
+              .map((n: any) => n.ninoNombre)
+              .filter(Boolean)
+              .join(', ');
+
+            // Nombre preferido / Diminutivo Tutor
+            mensajeBienvenida = mensajeBienvenida.replace(/\{nombre_preferido_tutor\}|\{diminutivo_tutor\}|\{alias_tutor\}|\{preferido_tutor\}|\{nombre_preferido_adulto\}|\{diminutivo_adulto\}|\[nombre_preferido_tutor\]|\[diminutivo_tutor\]|\[alias_tutor\]|\[preferido_tutor\]|\[nombre_preferido_adulto\]|\[diminutivo_adulto\]/gi, preferidoTutor);
+            
+            // Nombre preferido / Diminutivo Niño(s)
+            mensajeBienvenida = mensajeBienvenida.replace(/\{nombre_preferido_nino\}|\{diminutivo_nino\}|\{alias_nino\}|\{preferido_nino\}|\[nombre_preferido_nino\]|\[diminutivo_nino\]|\[alias_nino\]|\[preferido_nino\]/gi, nombresPreferidosNinos ? `*${nombresPreferidosNinos}*` : '');
+
+            // Nombre Completo Tutor
+            mensajeBienvenida = mensajeBienvenida.replace(/\{nombre_tutor\}|\{tutor\}|\{nombre_adulto\}|\{adulto\}|\[nombre_tutor\]|\[tutor\]|\[nombre_adulto\]|\[adulto\]/gi, values.tutorNombre || preferidoTutor);
+
+            // Nombre Completo Niño(s)
+            mensajeBienvenida = mensajeBienvenida.replace(/\{nombre_nino\}|\{nino\}|\{niño\}|\{nombre_niño\}|\[nombre_nino\]|\[nino\]|\[niño\]|\[nombre_niño\]/gi, nombresCompletosNinos ? `*${nombresCompletosNinos}*` : '');
+          }
+        } catch (configErr) {
+          console.error('Error cargando mensaje de bienvenida configurado:', configErr);
+        }
+
         const mensajeCodificado = encodeURIComponent(mensajeBienvenida);
-        const url = `https://wa.me/${values.tutorWhatsapp}?text=${mensajeCodificado}`;
-        window.open(url, '_blank');
+        const url = `https://api.whatsapp.com/send?phone=${telefono}&text=${mensajeCodificado}`;
+        
+        const link = document.createElement('a');
+        link.href = url;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
       }
 
       // Éxito absoluto -> Volvemos al panel de control para ver las tarjetas

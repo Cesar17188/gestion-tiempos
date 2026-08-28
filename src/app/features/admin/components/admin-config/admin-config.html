@@ -84,18 +84,42 @@
                 <div>
                     <label class="block text-xs font-medium text-gray-600">Mensaje de Bienvenida (Ingreso)</label>
                     <textarea rows="2" formControlName="msg_bienvenida"
-                        class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all"></textarea>
+                        class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all"
+                        placeholder="Ej. ¡Hola {nombre_preferido_tutor}! Bienvenidos a Vida Pequeña con {nombre_preferido_nino}."></textarea>
+                    <p class="mt-1 text-[11px] text-gray-400">
+                        Variables disponibles: 
+                        <code class="text-indigo-600 font-mono">&#123;nombre_preferido_nino&#125;</code>, 
+                        <code class="text-indigo-600 font-mono">&#123;nombre_preferido_tutor&#125;</code>, 
+                        <code class="text-indigo-600 font-mono">&#123;nino&#125;</code>, 
+                        <code class="text-indigo-600 font-mono">&#123;tutor&#125;</code>
+                    </p>
                 </div>
                 <div>
-                    <label class="block text-xs font-medium text-gray-600">Alerta de Próximo Vencimiento (Faltan 5
-                        min)</label>
+                    <label class="block text-xs font-medium text-gray-600">Alerta de Próximo Vencimiento (Faltan 5 min)</label>
                     <textarea rows="2" formControlName="msg_advertencia_5min"
-                        class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all"></textarea>
+                        class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all"
+                        placeholder="Ej. Hola {nombre_preferido_tutor}, el tiempo de juego de {nombre_preferido_nino} terminará en {minutos} minutos."></textarea>
+                    <p class="mt-1 text-[11px] text-gray-400">
+                        Variables disponibles: 
+                        <code class="text-indigo-600 font-mono">&#123;nombre_preferido_nino&#125;</code>, 
+                        <code class="text-indigo-600 font-mono">&#123;nombre_preferido_tutor&#125;</code>, 
+                        <code class="text-indigo-600 font-mono">&#123;minutos&#125;</code>, 
+                        <code class="text-indigo-600 font-mono">&#123;nino&#125;</code>, 
+                        <code class="text-indigo-600 font-mono">&#123;tutor&#125;</code>
+                    </p>
                 </div>
                 <div>
                     <label class="block text-xs font-medium text-gray-600">Alerta de Tiempo Concluido</label>
                     <textarea rows="2" formControlName="msg_tiempo_cumplido"
-                        class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all"></textarea>
+                        class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all"
+                        placeholder="Ej. Hola {nombre_preferido_tutor}, el tiempo de juego de {nombre_preferido_nino} ha concluido."></textarea>
+                    <p class="mt-1 text-[11px] text-gray-400">
+                        Variables disponibles: 
+                        <code class="text-indigo-600 font-mono">&#123;nombre_preferido_nino&#125;</code>, 
+                        <code class="text-indigo-600 font-mono">&#123;nombre_preferido_tutor&#125;</code>, 
+                        <code class="text-indigo-600 font-mono">&#123;nino&#125;</code>, 
+                        <code class="text-indigo-600 font-mono">&#123;tutor&#125;</code>
+                    </p>
                 </div>
             </div>
         </div>
