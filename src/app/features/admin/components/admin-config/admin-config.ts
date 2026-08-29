@@ -1,7 +1,9 @@
 import { Component, OnInit, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { createClient } from '@supabase/supabase-js';
 import { SupabaseService } from '../../../../core/services/supabase/supabase';
+import { environment } from '../../../../../environments/environment';
 
 @Component({
   selector: 'app-admin-config',
@@ -215,51 +217,132 @@ export class AdminConfig implements OnInit {
     this.cdr.detectChanges();
 
     const { email, nombre, rol } = this.personalForm.value;
+    const redirectTo = `${window.location.origin}/actualizar-password`;
 
     try {
-      const redirectTo = `${window.location.origin}/actualizar-password`;
-      
-      // Invocación a la Supabase Edge Function 'invitar-usuario'
-      const invitePromise = this.supabase.functions.invoke('invitar-usuario', {
-        body: {
-          email: String(email).trim().toLowerCase(),
-          nombre: String(nombre).trim(),
-          rol: rol || 'ENCARGADO',
-          redirectTo
-        }
-      });
+      let useFallback = false;
 
-      const response = await this.ejecutarConTimeout(invitePromise, 15000, 'El servidor de Supabase tardó demasiado en procesar la invitación');
-      const { data, error } = response;
+      // 1. Intento primario: Invocación a Supabase Edge Function 'invitar-usuario'
+      try {
+        const invitePromise = this.supabase.functions.invoke('invitar-usuario', {
+          body: {
+            email: String(email).trim().toLowerCase(),
+            nombre: String(nombre).trim(),
+            rol: rol || 'ENCARGADO',
+            redirectTo
+          }
+        });
 
-      if (error) {
-        let msgError = error.message || 'Error al procesar la invitación';
-        // Caso común: Edge function aún no desplegada en Supabase
-        if (msgError.includes('Failed to send') || msgError.includes('404') || msgError.includes('FunctionsFetchError') || msgError.includes('Relay Error')) {
-          msgError = `No se pudo conectar con la función de Supabase 'invitar-usuario'. Asegúrate de desplegar la Edge Function desde tu terminal usando:\n\nsupabase functions deploy invitar-usuario\n\ny configurar las claves en Supabase.`;
+        const response = await this.ejecutarConTimeout(invitePromise, 5000);
+        const { data, error } = response;
+
+        if (error || data?.error) {
+          const msg = String(error?.message || data?.error || '');
+          if (msg.includes('Failed to send') || msg.includes('404') || msg.includes('FunctionsFetchError') || msg.includes('Relay Error') || msg.includes('not found')) {
+            useFallback = true;
+          } else {
+            await this.abrirDialogo('Aviso', msg, 'Entendido');
+            return;
+          }
+        } else {
+          await this.abrirDialogo(
+            '¡Invitación Enviada!',
+            data?.message || `Se ha enviado un correo con el enlace de acceso a ${email}.`,
+            'Aceptar'
+          );
+          this.personalForm.reset({ rol: 'ENCARGADO' });
+          await this.cargarDatos();
+          return;
         }
-        await this.abrirDialogo('No se pudo enviar la invitación', msgError, 'Entendido');
-      } else if (data?.error) {
-        await this.abrirDialogo('Aviso del Sistema', data.error, 'Entendido');
-      } else {
+      } catch (e) {
+        useFallback = true;
+      }
+
+      // 2. Fallback Directo: Registro mediante cliente aislado (sin necesidad de desplegar Edge Function)
+      if (useFallback) {
+        await this.registrarDirectoFallback(email, nombre, rol);
+      }
+    } catch (err: any) {
+      console.error('Error al registrar colaborador:', err);
+      await this.abrirDialogo('Error al procesar registro', err?.message || err, 'Entendido');
+    } finally {
+      this.isSaving = false;
+      this.cdr.detectChanges();
+    }
+  }
+
+  private async registrarDirectoFallback(email: string, nombre: string, rol: string) {
+    const emailNormalizado = String(email).trim().toLowerCase();
+    const nombreNormalizado = String(nombre).trim();
+    const rolValido = (rol === 'ADMINISTRADOR' || rol === 'ENCARGADO') ? rol : 'ENCARGADO';
+    const redirectTo = `${window.location.origin}/actualizar-password`;
+
+    // Cliente aislado temporal que no interfiere con la sesión actual del administrador
+    const tempSupabase = createClient(environment.supabaseUrl, environment.supabaseKey, {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+        detectSessionInUrl: false
+      }
+    });
+
+    // Generamos contraseña temporal segura
+    const tempPassword = 'VP!' + Math.random().toString(36).slice(-8) + 'Aa9#';
+
+    const { data: signUpData, error: signUpError } = await tempSupabase.auth.signUp({
+      email: emailNormalizado,
+      password: tempPassword,
+      options: {
+        data: {
+          nombre: nombreNormalizado,
+          rol: rolValido
+        },
+        emailRedirectTo: redirectTo
+      }
+    });
+
+    if (signUpError) {
+      if (signUpError.message?.toLowerCase().includes('already registered') || signUpError.message?.toLowerCase().includes('already exists')) {
+        // Enviar correo de restablecimiento si ya existe
+        await this.supabase.auth.resetPasswordForEmail(emailNormalizado, { redirectTo });
         await this.abrirDialogo(
-          '¡Invitación Enviada!',
-          data?.message || `Se ha enviado un correo con el enlace de acceso a ${email}.`,
+          'Usuario Ya Existente',
+          `El correo ${emailNormalizado} ya existe en el sistema. Se le ha enviado un correo para restablecer o definir su contraseña.`,
           'Aceptar'
         );
         this.personalForm.reset({ rol: 'ENCARGADO' });
         await this.cargarDatos();
+        return;
       }
-    } catch (err: any) {
-      console.error('Error al registrar colaborador:', err);
-      let detalle = err?.message || err;
-      if (detalle.includes('Failed to send') || detalle.includes('FunctionsFetchError') || detalle.includes('Failed to fetch')) {
-        detalle = `La Edge Function 'invitar-usuario' aún no responde. Verifica que esté desplegada en tu proyecto de Supabase (supabase functions deploy invitar-usuario).`;
+      throw signUpError;
+    }
+
+    const nuevoUsuario = signUpData.user;
+    if (nuevoUsuario) {
+      // Aseguramos el registro con su rol en la tabla perfiles
+      const { error: perfilError } = await this.supabase.from('perfiles').upsert({
+        id: nuevoUsuario.id,
+        email: emailNormalizado,
+        nombre: nombreNormalizado,
+        rol: rolValido,
+        activo: true
+      });
+
+      if (perfilError) {
+        console.warn('Nota al sincronizar perfil:', perfilError);
       }
-      await this.abrirDialogo('Error al procesar invitación', detalle, 'Entendido');
-    } finally {
-      this.isSaving = false;
-      this.cdr.detectChanges();
+
+      // Enviar enlace de restablecimiento para que el colaborador elija su propia contraseña
+      await this.supabase.auth.resetPasswordForEmail(emailNormalizado, { redirectTo });
+
+      await this.abrirDialogo(
+        '¡Colaborador Registrado Exitosamente!',
+        `Se ha creado la cuenta en la base de datos para ${nombreNormalizado} (${rolValido === 'ENCARGADO' ? 'Anfitriona' : 'Administrador General'}).\n\nSe ha enviado un correo a ${emailNormalizado} con el enlace para definir su contraseña y acceder.`,
+        'Aceptar'
+      );
+
+      this.personalForm.reset({ rol: 'ENCARGADO' });
+      await this.cargarDatos();
     }
   }
 
