@@ -33,4 +33,9 @@ export class SupabaseService {
   get storage() {
     return this.supabase.storage;
   }
+
+  // 5. Helper para Supabase Edge Functions
+  get functions() {
+    return this.supabase.functions;
+  }
 }

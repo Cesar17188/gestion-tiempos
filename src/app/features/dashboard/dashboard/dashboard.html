@@ -108,7 +108,7 @@
                     <span class="info-label">Nombre del tutor:</span>
                     <span class="info-value text-secondary">{{ sesion.nombreTutor }}@if (sesion.parentescoTutor) { - {{ sesion.parentescoTutor }}}</span>
                   </div>
-                  <span class="relative inline-flex items-center flex-shrink-0">
+                  <span class="relative inline-flex items-center shrink-0">
                     <select (change)="onEditOptionSelected(sesion, $event)"
                       class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                       title="Editar Información">
@@ -253,7 +253,7 @@
   <div
     class="fixed bottom-4 right-4 z-50 flex items-center p-4 mb-4 text-gray-500 bg-white rounded-lg shadow-lg border-l-4"
     [ngClass]="{'border-green-500': toastType === 'success', 'border-red-500': toastType === 'error'}">
-    <div class="inline-flex items-center justify-center flex-shrink-0 w-8 h-8 rounded-lg"
+    <div class="inline-flex items-center justify-center shrink-0 w-8 h-8 rounded-lg"
       [ngClass]="{'bg-green-100 text-green-500': toastType === 'success', 'bg-red-100 text-red-500': toastType === 'error'}">
       @if (toastType === 'success') {
       <svg class="w-5 h-5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor"
@@ -284,7 +284,7 @@
   <!-- Confirm Dialog Modal -->
   @if (showConfirmDialog) {
   <div
-    class="fixed inset-0 z-[60] flex items-center justify-center bg-gray-900 bg-opacity-50 backdrop-blur-sm transition-opacity">
+    class="fixed inset-0 z-60 flex items-center justify-center bg-gray-900 bg-opacity-50 backdrop-blur-sm transition-opacity">
     <div class="bg-white rounded-2xl shadow-xl max-w-md w-full mx-4 overflow-hidden transform transition-all">
       <div class="p-6">
         <h3 class="text-xl font-bold text-gray-900 mb-2">{{ dialogTitle }}</h3>
@@ -308,7 +308,7 @@
   <!-- Update Tutor Dialog Modal -->
   @if (showUpdateTutorDialog && selectedSesionForUpdate) {
   <div
-    class="fixed inset-0 z-[60] flex items-center justify-center bg-gray-900 bg-opacity-50 backdrop-blur-sm transition-opacity p-4 sm:p-6 overflow-y-auto">
+    class="fixed inset-0 z-60 flex items-center justify-center bg-gray-900 bg-opacity-50 backdrop-blur-sm transition-opacity p-4 sm:p-6 overflow-y-auto">
     <div
       class="bg-white rounded-2xl shadow-xl max-w-2xl w-full mx-auto overflow-hidden transform transition-all my-auto max-h-[90vh] flex flex-col">
 
@@ -335,7 +335,7 @@
                 [ngClass]="{'border-red-300 bg-red-50': tutorUpdateForm.get('tutorCedula')?.invalid && tutorUpdateForm.get('tutorCedula')?.touched}"
                 placeholder="Ej. 1712345678 o Pasaporte" (keyup.enter)="buscarPorCedulaUpdate()">
               <button type="button" (click)="buscarPorCedulaUpdate()" [disabled]="isSearchingTutor"
-                class="px-4 py-2 bg-indigo-50 border border-l-0 border-indigo-200 text-indigo-700 font-semibold rounded-r-xl hover:bg-indigo-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors flex items-center justify-center min-w-[80px]">
+                class="px-4 py-2 bg-indigo-50 border border-l-0 border-indigo-200 text-indigo-700 font-semibold rounded-r-xl hover:bg-indigo-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors flex items-center justify-center min-w-20">
                 @if (isSearchingTutor) {
                 <svg class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                   <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -350,7 +350,7 @@
             </div>
             @if (tutorUpdateForm.get('tutorCedula')?.invalid && tutorUpdateForm.get('tutorCedula')?.touched) {
             <p class="mt-1 text-xs text-red-600 font-medium flex items-center gap-1">
-              <svg class="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>
+              <svg class="w-3.5 h-3.5 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>
               {{ tutorUpdateForm.get('tutorCedula')?.errors?.['required'] ? 'La cédula es obligatoria.' : (tutorUpdateForm.get('tutorCedula')?.errors?.['cedulaInvalida'] || 'Identificación inválida.') }}
             </p>
             }
@@ -369,7 +369,7 @@
               placeholder="Ej. Laura Sánchez">
             @if (tutorUpdateForm.get('tutorNombre')?.invalid && tutorUpdateForm.get('tutorNombre')?.touched) {
             <p class="mt-1 text-xs text-red-600 font-medium flex items-center gap-1">
-              <svg class="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>
+              <svg class="w-3.5 h-3.5 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>
               El nombre completo es obligatorio (mínimo 4 caracteres).
             </p>
             }
@@ -390,7 +390,7 @@
                 placeholder="Ej. Tía, Abuelo...">
               @if (tutorUpdateForm.get('tutorParentesco')?.invalid && tutorUpdateForm.get('tutorParentesco')?.touched) {
               <p class="mt-1 text-xs text-red-600 font-medium flex items-center gap-1">
-                <svg class="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>
+                <svg class="w-3.5 h-3.5 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>
                 El parentesco es obligatorio.
               </p>
               }
@@ -406,7 +406,7 @@
                 placeholder="Ej. 0991234567 o +593991234567">
               @if (tutorUpdateForm.get('tutorWhatsapp')?.invalid && tutorUpdateForm.get('tutorWhatsapp')?.touched) {
               <p class="mt-1 text-xs text-red-600 font-medium flex items-center gap-1">
-                <svg class="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>
+                <svg class="w-3.5 h-3.5 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>
                 {{ tutorUpdateForm.get('tutorWhatsapp')?.errors?.['telefonoInvalido'] || 'Ingrese un celular válido (ej. 0991234567 o +593991234567).' }}
               </p>
               } @else if (tutorUpdateForm.get('tutorWhatsapp')?.value) {
@@ -424,7 +424,7 @@
                 placeholder="Ej. laura@correo.com">
               @if (tutorUpdateForm.get('tutorCorreo')?.invalid && tutorUpdateForm.get('tutorCorreo')?.touched) {
               <p class="mt-1 text-xs text-red-600 font-medium flex items-center gap-1">
-                <svg class="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>
+                <svg class="w-3.5 h-3.5 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>
                 Correo inválido (ej. usuario&#64;ejemplo.com).
               </p>
               }
@@ -462,7 +462,7 @@
   <!-- Update Niño Dialog Modal -->
   @if (showUpdateNinoDialog && selectedSesionForUpdate) {
   <div
-    class="fixed inset-0 z-[60] flex items-center justify-center bg-gray-900 bg-opacity-50 backdrop-blur-sm transition-opacity p-4 sm:p-6 overflow-y-auto">
+    class="fixed inset-0 z-60 flex items-center justify-center bg-gray-900 bg-opacity-50 backdrop-blur-sm transition-opacity p-4 sm:p-6 overflow-y-auto">
     <div
       class="bg-white rounded-2xl shadow-xl max-w-xl w-full mx-auto overflow-hidden transform transition-all my-auto max-h-[90vh] flex flex-col">
 

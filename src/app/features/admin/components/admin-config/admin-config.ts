@@ -18,6 +18,7 @@ export class AdminConfig implements OnInit {
   isLoading = true;
   isSaving = false;
   personalGuardandoId: string | null = null;
+  personalEnviandoEmailId: string | null = null;
   subSeccion: 'negocio' | 'personal' = 'negocio'; // Control de sub-pestañas
   mensajeFeedback = '';
 
@@ -213,22 +214,87 @@ export class AdminConfig implements OnInit {
     this.isSaving = true;
     this.cdr.detectChanges();
 
+    const { email, nombre, rol } = this.personalForm.value;
+
     try {
-      const { email } = this.personalForm.value;
+      const redirectTo = `${window.location.origin}/actualizar-password`;
+      
+      // Invocación a la Supabase Edge Function 'invitar-usuario'
+      const invitePromise = this.supabase.functions.invoke('invitar-usuario', {
+        body: {
+          email: String(email).trim().toLowerCase(),
+          nombre: String(nombre).trim(),
+          rol: rol || 'ENCARGADO',
+          redirectTo
+        }
+      });
 
-      await this.abrirDialogo(
-        'Invitación Enviada',
-        `Nota técnica: Para producción, se enviará una invitación por correo a ${email}. El perfil se creará automáticamente cuando acepte.`,
-        'Entendido'
-      );
+      const response = await this.ejecutarConTimeout(invitePromise, 15000, 'El servidor de Supabase tardó demasiado en procesar la invitación');
+      const { data, error } = response;
 
-      this.personalForm.reset({ rol: 'ENCARGADO' });
-      await this.cargarDatos();
+      if (error) {
+        let msgError = error.message || 'Error al procesar la invitación';
+        // Caso común: Edge function aún no desplegada en Supabase
+        if (msgError.includes('Failed to send') || msgError.includes('404') || msgError.includes('FunctionsFetchError') || msgError.includes('Relay Error')) {
+          msgError = `No se pudo conectar con la función de Supabase 'invitar-usuario'. Asegúrate de desplegar la Edge Function desde tu terminal usando:\n\nsupabase functions deploy invitar-usuario\n\ny configurar las claves en Supabase.`;
+        }
+        await this.abrirDialogo('No se pudo enviar la invitación', msgError, 'Entendido');
+      } else if (data?.error) {
+        await this.abrirDialogo('Aviso del Sistema', data.error, 'Entendido');
+      } else {
+        await this.abrirDialogo(
+          '¡Invitación Enviada!',
+          data?.message || `Se ha enviado un correo con el enlace de acceso a ${email}.`,
+          'Aceptar'
+        );
+        this.personalForm.reset({ rol: 'ENCARGADO' });
+        await this.cargarDatos();
+      }
     } catch (err: any) {
       console.error('Error al registrar colaborador:', err);
-      await this.abrirDialogo('Error', 'No se pudo completar el registro: ' + (err?.message || err), 'Entendido');
+      let detalle = err?.message || err;
+      if (detalle.includes('Failed to send') || detalle.includes('FunctionsFetchError') || detalle.includes('Failed to fetch')) {
+        detalle = `La Edge Function 'invitar-usuario' aún no responde. Verifica que esté desplegada en tu proyecto de Supabase (supabase functions deploy invitar-usuario).`;
+      }
+      await this.abrirDialogo('Error al procesar invitación', detalle, 'Entendido');
     } finally {
       this.isSaving = false;
+      this.cdr.detectChanges();
+    }
+  }
+
+  async enviarResetPassword(perfil: any) {
+    if (!perfil || !perfil.email || this.personalEnviandoEmailId) return;
+
+    this.personalEnviandoEmailId = perfil.id;
+    this.cdr.detectChanges();
+
+    try {
+      const redirectTo = `${window.location.origin}/actualizar-password`;
+      const resetPromise = this.supabase.auth.resetPasswordForEmail(perfil.email, {
+        redirectTo
+      });
+
+      const { error } = await this.ejecutarConTimeout(resetPromise as any, 10000) as any;
+
+      if (error) {
+        await this.abrirDialogo(
+          'Error al enviar correo',
+          `No se pudo enviar el correo de acceso a ${perfil.email}: ${error.message}`,
+          'Entendido'
+        );
+      } else {
+        await this.abrirDialogo(
+          'Correo Enviado',
+          `Se ha enviado exitosamente el enlace para restablecer o definir la contraseña a ${perfil.email}.`,
+          'Aceptar'
+        );
+      }
+    } catch (err: any) {
+      console.error('Error al enviar correo de contraseña:', err);
+      await this.abrirDialogo('Error', 'No se pudo enviar el correo: ' + (err?.message || err), 'Entendido');
+    } finally {
+      this.personalEnviandoEmailId = null;
       this.cdr.detectChanges();
     }
   }

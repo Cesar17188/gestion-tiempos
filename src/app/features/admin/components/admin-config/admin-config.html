@@ -189,7 +189,7 @@
         <!-- Tabla / Lista de Personal Registrado -->
         <div class="lg:col-span-2 space-y-3">
             <h4 class="text-xs font-bold text-gray-400 uppercase tracking-wider">Colaboradores Activos</h4>
-            <div class="divide-y divide-gray-50 max-h-[350px] overflow-y-auto pr-2">
+            <div class="divide-y divide-gray-50 max-h-87.5 overflow-y-auto pr-2">
                 @for (perfil of listaPersonal; track perfil.id) {
                 <div class="flex flex-col py-3 border-b border-gray-50 last:border-0">
                     <div class="flex items-center justify-between">
@@ -200,14 +200,33 @@
                             </div>
                             <div>
                                 <p class="text-sm font-bold text-gray-800">{{ perfil.nombre }}</p>
-                                <p class="text-xxs text-gray-400">ID: {{ perfil.id }}</p>
+                                <p class="text-xxs text-gray-500 font-medium">{{ perfil.email || ('ID: ' + perfil.id) }}</p>
                             </div>
                         </div>
-                        <span
-                            [ngClass]="{'bg-purple-50 text-purple-600 border-purple-100': perfil.rol === 'ADMINISTRADOR', 'bg-blue-50 text-blue-600 border-blue-100': perfil.rol === 'ENCARGADO'}"
-                            class="text-xxs font-bold px-2.5 py-1 rounded-lg border uppercase tracking-wider">
-                            {{ perfil.rol === 'ENCARGADO' ? 'ANFITRIONA' : perfil.rol }}
-                        </span>
+                        <div class="flex items-center gap-2">
+                            <button (click)="enviarResetPassword(perfil)"
+                                [disabled]="personalEnviandoEmailId === perfil.id"
+                                class="text-xxs font-medium px-2.5 py-1 rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-600 hover:text-indigo-600 transition-colors flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                                title="Enviar enlace para definir o restablecer contraseña">
+                                @if (personalEnviandoEmailId === perfil.id) {
+                                    <svg class="animate-spin h-3 w-3 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                                    </svg>
+                                    <span>Enviando...</span>
+                                } @else {
+                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"></path>
+                                    </svg>
+                                    <span>Enviar Acceso</span>
+                                }
+                            </button>
+                            <span
+                                [ngClass]="{'bg-purple-50 text-purple-600 border-purple-100': perfil.rol === 'ADMINISTRADOR', 'bg-blue-50 text-blue-600 border-blue-100': perfil.rol === 'ENCARGADO'}"
+                                class="text-xxs font-bold px-2.5 py-1 rounded-lg border uppercase tracking-wider">
+                                {{ perfil.rol === 'ENCARGADO' ? 'ANFITRIONA' : perfil.rol }}
+                            </span>
+                        </div>
                     </div>
 
                     @if (perfil.rol === 'ENCARGADO') {
@@ -254,7 +273,7 @@
 
     <!-- Confirm Dialog Modal -->
     @if (showConfirmDialog) {
-    <div class="fixed inset-0 z-[60] flex items-center justify-center bg-gray-900 bg-opacity-50 backdrop-blur-sm transition-opacity">
+    <div class="fixed inset-0 z-60 flex items-center justify-center bg-gray-900 bg-opacity-50 backdrop-blur-sm transition-opacity">
         <div class="bg-white rounded-2xl shadow-xl max-w-md w-full mx-4 overflow-hidden transform transition-all">
         <div class="p-6">
             <h3 class="text-xl font-bold text-gray-900 mb-2">{{ dialogTitle }}</h3>

@@ -30,7 +30,7 @@
                      placeholder="Ej. 1712345678 o Pasaporte"
                      (keyup.enter)="buscarPorCedula()">
               <button type="button" (click)="buscarPorCedula()" [disabled]="isSearching"
-                      class="px-4 py-3 bg-indigo-50 border border-l-0 border-indigo-200 text-indigo-700 font-semibold rounded-r-xl hover:bg-indigo-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors flex items-center justify-center min-w-[100px]">
+                      class="px-4 py-3 bg-indigo-50 border border-l-0 border-indigo-200 text-indigo-700 font-semibold rounded-r-xl hover:bg-indigo-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors flex items-center justify-center min-w-25">
                 @if (isSearching) {
                   <svg class="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -43,7 +43,7 @@
             </div>
             @if (ingresoForm.get('tutorCedula')?.invalid && ingresoForm.get('tutorCedula')?.touched) {
               <p class="mt-1.5 text-xs text-red-600 font-medium flex items-center gap-1">
-                <svg class="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>
+                <svg class="w-3.5 h-3.5 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>
                 {{ ingresoForm.get('tutorCedula')?.errors?.['required'] ? 'La cédula o identificación es obligatoria.' : (ingresoForm.get('tutorCedula')?.errors?.['cedulaInvalida'] || 'Identificación inválida.') }}
               </p>
             }
@@ -60,7 +60,7 @@
                    placeholder="Ej. Laura Sánchez">
             @if (ingresoForm.get('tutorNombre')?.invalid && ingresoForm.get('tutorNombre')?.touched) {
               <p class="mt-1.5 text-xs text-red-600 font-medium flex items-center gap-1">
-                <svg class="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>
+                <svg class="w-3.5 h-3.5 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>
                 El nombre completo es obligatorio (mínimo 4 caracteres).
               </p>
             }
@@ -81,7 +81,7 @@
                      placeholder="Ej. Madre, Padre, Tía...">
               @if (ingresoForm.get('tutorParentesco')?.invalid && ingresoForm.get('tutorParentesco')?.touched) {
                 <p class="mt-1.5 text-xs text-red-600 font-medium flex items-center gap-1">
-                  <svg class="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>
+                  <svg class="w-3.5 h-3.5 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>
                   El parentesco es obligatorio.
                 </p>
               }
@@ -96,7 +96,7 @@
                    placeholder="Ej. laura@correo.com">
             @if (ingresoForm.get('tutorCorreo')?.invalid && ingresoForm.get('tutorCorreo')?.touched) {
               <p class="mt-1.5 text-xs text-red-600 font-medium flex items-center gap-1">
-                <svg class="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>
+                <svg class="w-3.5 h-3.5 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>
                 Ingrese un correo válido con formato usuario&#64;dominio.com
               </p>
             }
@@ -110,7 +110,7 @@
                    placeholder="Ej. 0991234567 o +593991234567">
             @if (ingresoForm.get('tutorWhatsapp')?.invalid && ingresoForm.get('tutorWhatsapp')?.touched) {
               <p class="mt-1.5 text-xs text-red-600 font-medium flex items-center gap-1">
-                <svg class="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>
+                <svg class="w-3.5 h-3.5 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>
                 {{ ingresoForm.get('tutorWhatsapp')?.errors?.['telefonoInvalido'] || 'Ingrese un celular válido (ej. 0991234567 o +593991234567).' }}
               </p>
             } @else if (ingresoForm.get('tutorWhatsapp')?.value) {
@@ -141,7 +141,7 @@
 
               @if (ninoCtrl.get('sesionActivaInfo')?.value?.activa) {
                 <div class="p-3.5 bg-amber-50 border border-amber-300 rounded-xl flex items-start gap-2.5 text-amber-900 text-sm">
-                  <svg class="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                  <svg class="w-5 h-5 text-amber-600 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
                     <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
                   </svg>
                   <div>
@@ -159,7 +159,7 @@
                          placeholder="Ej. Mateo Rodríguez"
                          (keyup.enter)="buscarPorNombreNino(i)">
                   <button type="button" (click)="buscarPorNombreNino(i)" [disabled]="isSearchingNino && searchingNinoIndex === i"
-                          class="px-4 py-3 bg-indigo-50 border border-l-0 border-indigo-200 text-indigo-700 font-semibold rounded-r-xl hover:bg-indigo-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors flex items-center justify-center min-w-[100px]">
+                          class="px-4 py-3 bg-indigo-50 border border-l-0 border-indigo-200 text-indigo-700 font-semibold rounded-r-xl hover:bg-indigo-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors flex items-center justify-center min-w-25">
                     @if (isSearchingNino && searchingNinoIndex === i) {
                       <svg class="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -290,13 +290,13 @@
 
   <!-- Modal Dialog de Alertas y Validación -->
   @if (showDialog) {
-  <div class="fixed inset-0 z-[60] flex items-center justify-center bg-gray-900/60 backdrop-blur-sm transition-opacity p-4">
+  <div class="fixed inset-0 z-60 flex items-center justify-center bg-gray-900/60 backdrop-blur-sm transition-opacity p-4">
     <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-auto overflow-hidden transform transition-all border border-gray-100">
       
       <div class="p-6">
         <!-- Encabezado con Icono -->
         <div class="flex items-start gap-4 mb-3">
-          <div class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm"
+          <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm"
                [ngClass]="{
                  'bg-amber-100 text-amber-600': dialogType === 'warning',
                  'bg-red-100 text-red-600': dialogType === 'error',
