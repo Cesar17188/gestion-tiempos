@@ -1,6 +1,7 @@
 // Supabase Edge Function: invitar-usuario
 // Permite a los Administradores invitar nuevo personal al sistema de forma segura
 
+import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.8";
 
@@ -101,7 +102,7 @@ serve(async (req: Request) => {
       if (inviteError.message?.toLowerCase().includes("already registered") || inviteError.message?.toLowerCase().includes("already exists")) {
         // Obtenemos los datos del usuario existente para sincronizar el perfil si es necesario
         const { data: listData } = await supabaseAdmin.auth.admin.listUsers();
-        const existingUser = listData?.users?.find(u => u.email?.toLowerCase() === emailNormalizado);
+        const existingUser = listData?.users?.find((u: { id: string; email?: string }) => u.email?.toLowerCase() === emailNormalizado);
 
         if (existingUser) {
           await supabaseAdmin.from("perfiles").upsert({

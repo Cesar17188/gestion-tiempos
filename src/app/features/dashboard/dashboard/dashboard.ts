@@ -655,6 +655,11 @@ export class Dashboard implements OnInit, OnDestroy {
 
   // 5. AGREGAR 30 MINUTOS A LA SESIÓN
   async agregarMediaHora(sesion: SesionJuego) {
+    if (sesion.estadoAlerta === 'expirado') {
+      this.mostrarToast('La sesión ha expirado. Debe iniciar una nueva sesión.', 'error');
+      return;
+    }
+
     // Calculamos la nueva fecha de salida estimada sumando 30 minutos (30 * 60000 milisegundos)
     const nuevaSalidaEstimada = new Date(sesion.horaSalidaEstimada.getTime() + 30 * 60000);
     const nuevosMinutosExtra = sesion.minutosExtra + 30;
@@ -681,6 +686,7 @@ export class Dashboard implements OnInit, OnDestroy {
       sesion.costoTotal = sesion.costoBase + sesion.costoExtra;
       sesion.extensionAplicada = true;
       this.actualizarTiempos();
+      this.mostrarToast('Se agregaron 30 minutos a la sesión.', 'success');
     }
   }
 
