@@ -338,7 +338,17 @@ export class Dashboard implements OnInit, OnDestroy {
     if (data) {
       this.sesiones = data.map((item: any) => {
         const tutoresArray = item.ninos?.tutores;
-        const ultimoTutor = (Array.isArray(tutoresArray) && tutoresArray.length > 0) ? tutoresArray[tutoresArray.length - 1] : tutoresArray;
+        let ultimoTutor: any = null;
+        if (Array.isArray(tutoresArray) && tutoresArray.length > 0) {
+          const sesionPrevia = this.sesiones.find(s => s.id === item.id || s.ninoId === item.nino_id);
+          if (sesionPrevia?.tutorId) {
+            ultimoTutor = tutoresArray.find((t: any) => t.id === sesionPrevia.tutorId) || tutoresArray[tutoresArray.length - 1];
+          } else {
+            ultimoTutor = tutoresArray[tutoresArray.length - 1];
+          }
+        } else {
+          ultimoTutor = tutoresArray;
+        }
         
         return {
           id: item.id,
@@ -938,8 +948,19 @@ export class Dashboard implements OnInit, OnDestroy {
         tutorIdFinal = tutorData.id;
       }
 
-      // 2. Vincular el tutor al niño
+      // 2. Vincular el tutor al niño y desvincular el anterior si se cambió de persona
       if (tutorIdFinal) {
+        if (currentTutorId && currentTutorId !== tutorIdFinal) {
+          try {
+            await this.supabaseService.db('ninos_tutores')
+              .delete()
+              .eq('tutor_id', currentTutorId)
+              .eq('nino_id', ninoId);
+          } catch (delErr) {
+            console.warn('Error al actualizar asociación de tutor previo:', delErr);
+          }
+        }
+
         const { data: linkExistente, error: linkError } = await this.supabaseService.db('ninos_tutores')
           .select('*')
           .eq('tutor_id', tutorIdFinal)
