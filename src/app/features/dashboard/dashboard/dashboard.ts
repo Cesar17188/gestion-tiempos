@@ -23,10 +23,14 @@ export interface SesionJuego {
   aliasNino?: string;
   ninoFechaNacimiento?: string;
   ninoNotas?: string;
+  tutorId?: string;
+  tutorCedula?: string;
   nombreTutor: string;
   aliasTutor?: string;
   parentescoTutor: string;
   whatsapp: string;
+  tutorCorreo?: string;
+  tutorContactoAdicional?: string;
   horaIngreso: Date;
   horaSalidaEstimada: Date;
   minutosRestantes: number;
@@ -306,15 +310,20 @@ export class Dashboard implements OnInit, OnDestroy {
         tipologia,
         observaciones_tipologia,
         ninos (
+          id,
           nombres_apellidos,
           alias,
           fecha_nacimiento,
           notas,
           tutores (
+            id,
+            cedula,
             nombres_apellidos,
             alias,
             whatsapp,
-            parentesco
+            parentesco,
+            correo,
+            contacto_adicional_nombre
           )
         )
       `)
@@ -338,23 +347,27 @@ export class Dashboard implements OnInit, OnDestroy {
           aliasNino: item.ninos?.alias?.trim() || '',
           ninoFechaNacimiento: item.ninos?.fecha_nacimiento || '',
           ninoNotas: item.ninos?.notas || '',
+          tutorId: ultimoTutor?.id || '',
+          tutorCedula: ultimoTutor?.cedula || '',
           nombreTutor: ultimoTutor?.nombres_apellidos || 'Desconocido',
           aliasTutor: ultimoTutor?.alias?.trim() || '',
           parentescoTutor: ultimoTutor?.parentesco || '',
           whatsapp: ultimoTutor?.whatsapp || '',
-        horaIngreso: new Date(item.ingreso_at),
-        horaSalidaEstimada: new Date(item.salida_estimada_at),
-        minutosRestantes: 0,
-        tiempoRestanteStr: '00:00',
-        estadoAlerta: 'normal',
-        costoBase: item.costo_base || 30, // Fallback si no está seteado
-        minutosExtra: item.minutos_extra || 0,
-        costoExtra: item.costo_extra || 0,
-        adultosAdicionales: item.adultos_adicionales || 0,
-        extensionAplicada: (item.minutos_extra || 0) > 0,
-        costoTotal: (item.costo_base || 30) + (item.costo_extra || 0),
-        tipologia: item.tipologia || '',
-        observacionesTipologia: item.observaciones_tipologia || ''
+          tutorCorreo: ultimoTutor?.correo || '',
+          tutorContactoAdicional: ultimoTutor?.contacto_adicional_nombre || '',
+          horaIngreso: new Date(item.ingreso_at),
+          horaSalidaEstimada: new Date(item.salida_estimada_at),
+          minutosRestantes: 0,
+          tiempoRestanteStr: '00:00',
+          estadoAlerta: 'normal',
+          costoBase: item.costo_base || 30, // Fallback si no está seteado
+          minutosExtra: item.minutos_extra || 0,
+          costoExtra: item.costo_extra || 0,
+          adultosAdicionales: item.adultos_adicionales || 0,
+          extensionAplicada: (item.minutos_extra || 0) > 0,
+          costoTotal: (item.costo_base || 30) + (item.costo_extra || 0),
+          tipologia: item.tipologia || '',
+          observacionesTipologia: item.observaciones_tipologia || ''
         };
       });
 
@@ -369,9 +382,28 @@ export class Dashboard implements OnInit, OnDestroy {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'sesiones_juego' },
-        (payload) => {
-          console.log('¡Cambio detectado en la base de datos!', payload);
-          // Si hay cualquier cambio (INSERT, UPDATE), recargamos la lista
+        () => {
+          this.cargarSesionesActivas();
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'tutores' },
+        () => {
+          this.cargarSesionesActivas();
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'ninos' },
+        () => {
+          this.cargarSesionesActivas();
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'ninos_tutores' },
+        () => {
           this.cargarSesionesActivas();
         }
       )
@@ -740,8 +772,16 @@ export class Dashboard implements OnInit, OnDestroy {
   // --- ACTUALIZACIÓN DE TUTOR ---
   abrirDialogoActualizarTutor(sesion: SesionJuego) {
     this.selectedSesionForUpdate = sesion;
-    this.tutorUpdateForm.reset();
     this.searchTutorMessage = '';
+    this.tutorUpdateForm.patchValue({
+      tutorCedula: sesion.tutorCedula || '',
+      tutorNombre: (sesion.nombreTutor && sesion.nombreTutor !== 'Desconocido') ? sesion.nombreTutor : '',
+      tutorAlias: sesion.aliasTutor || '',
+      tutorParentesco: sesion.parentescoTutor || '',
+      tutorWhatsapp: sesion.whatsapp || '',
+      tutorCorreo: sesion.tutorCorreo || '',
+      tutorContactoAdicional: sesion.tutorContactoAdicional || ''
+    });
     this.showUpdateTutorDialog = true;
   }
 
@@ -843,32 +883,52 @@ export class Dashboard implements OnInit, OnDestroy {
     this.isSavingTutor = true;
     const values = this.tutorUpdateForm.value;
     const ninoId = this.selectedSesionForUpdate.ninoId;
+    const currentTutorId = this.selectedSesionForUpdate.tutorId;
     let tutorIdFinal: string | null = null;
 
     try {
       const cedulaSanitizada = sanitizarTexto(values.tutorCedula);
       const whatsappNormalizado = normalizarTelefono(values.tutorWhatsapp);
       const correoSanitizado = sanitizarCorreo(values.tutorCorreo);
-
-      // 1. Buscar si el tutor ya existe o crearlo
-      const { data: existingTutor } = await this.supabaseService.db('tutores')
-        .select('id')
-        .eq('cedula', cedulaSanitizada)
-        .maybeSingle();
+      const nombreSanitizado = sanitizarTexto(values.tutorNombre);
+      const aliasSanitizado = sanitizarTexto(values.tutorAlias);
+      const parentescoSanitizado = sanitizarTexto(values.tutorParentesco);
+      const contactoAdicionalSanitizado = sanitizarTexto(values.tutorContactoAdicional);
 
       const tutorPayload = {
-        nombres_apellidos: sanitizarTexto(values.tutorNombre),
+        nombres_apellidos: nombreSanitizado,
         cedula: cedulaSanitizada,
-        alias: sanitizarTexto(values.tutorAlias),
-        parentesco: sanitizarTexto(values.tutorParentesco),
+        alias: aliasSanitizado,
+        parentesco: parentescoSanitizado,
         correo: correoSanitizado,
-        contacto_adicional_nombre: sanitizarTexto(values.tutorContactoAdicional),
+        contacto_adicional_nombre: contactoAdicionalSanitizado,
         whatsapp: whatsappNormalizado
       };
 
+      // 1. Buscar si el tutor ya existe por cédula o usar el tutorId actual
+      let existingTutor: any = null;
+      if (cedulaSanitizada) {
+        const { data } = await this.supabaseService.db('tutores')
+          .select('id')
+          .eq('cedula', cedulaSanitizada)
+          .maybeSingle();
+        existingTutor = data;
+      }
+
+      if (!existingTutor && currentTutorId) {
+        const { data } = await this.supabaseService.db('tutores')
+          .select('id')
+          .eq('id', currentTutorId)
+          .maybeSingle();
+        if (data) {
+          existingTutor = data;
+        }
+      }
+
       if (existingTutor) {
         tutorIdFinal = existingTutor.id;
-        await this.supabaseService.db('tutores').update(tutorPayload).eq('id', tutorIdFinal);
+        const { error: updErr } = await this.supabaseService.db('tutores').update(tutorPayload).eq('id', tutorIdFinal);
+        if (updErr) throw new Error(`Error al actualizar responsable: ${updErr.message}`);
       } else {
         const { data: tutorData, error: tutorError } = await this.supabaseService.db('tutores')
           .insert(tutorPayload)
@@ -879,24 +939,51 @@ export class Dashboard implements OnInit, OnDestroy {
       }
 
       // 2. Vincular el tutor al niño
-      const { data: linkExistente, error: linkError } = await this.supabaseService.db('ninos_tutores')
-        .select('*')
-        .eq('tutor_id', tutorIdFinal)
-        .eq('nino_id', ninoId)
-        .maybeSingle();
-        
-      if (!linkExistente && !linkError) {
-         await this.supabaseService.db('ninos_tutores').insert({
-           tutor_id: tutorIdFinal,
-           nino_id: ninoId
-         });
+      if (tutorIdFinal) {
+        const { data: linkExistente, error: linkError } = await this.supabaseService.db('ninos_tutores')
+          .select('*')
+          .eq('tutor_id', tutorIdFinal)
+          .eq('nino_id', ninoId)
+          .maybeSingle();
+          
+        if (!linkExistente && !linkError) {
+          await this.supabaseService.db('ninos_tutores').insert({
+            tutor_id: tutorIdFinal,
+            nino_id: ninoId
+          });
+        }
+      }
+
+      // 3. Actualizar directamente el estado en memoria para actualización inmediata en la tarjeta
+      this.sesiones.forEach(s => {
+        if (s.ninoId === ninoId || s.id === this.selectedSesionForUpdate?.id) {
+          s.tutorId = tutorIdFinal || s.tutorId;
+          s.tutorCedula = cedulaSanitizada;
+          s.nombreTutor = nombreSanitizado;
+          s.aliasTutor = aliasSanitizado;
+          s.parentescoTutor = parentescoSanitizado;
+          s.whatsapp = whatsappNormalizado;
+          s.tutorCorreo = correoSanitizado;
+          s.tutorContactoAdicional = contactoAdicionalSanitizado;
+        }
+      });
+
+      if (this.selectedSesionForUpdate) {
+        this.selectedSesionForUpdate.tutorId = tutorIdFinal || this.selectedSesionForUpdate.tutorId;
+        this.selectedSesionForUpdate.tutorCedula = cedulaSanitizada;
+        this.selectedSesionForUpdate.nombreTutor = nombreSanitizado;
+        this.selectedSesionForUpdate.aliasTutor = aliasSanitizado;
+        this.selectedSesionForUpdate.parentescoTutor = parentescoSanitizado;
+        this.selectedSesionForUpdate.whatsapp = whatsappNormalizado;
+        this.selectedSesionForUpdate.tutorCorreo = correoSanitizado;
+        this.selectedSesionForUpdate.tutorContactoAdicional = contactoAdicionalSanitizado;
       }
 
       this.mostrarToast('Responsable actualizado exitosamente.', 'success');
       this.cerrarDialogoActualizarTutor();
       
-      // Forzamos actualización visual de sesiones (aunque realtime debería hacerlo en la app, al actualizar otras tablas no siempre salta el de sesiones)
-      this.cargarSesionesActivas();
+      // Recargar sesiones en segundo plano para sincronizar
+      await this.cargarSesionesActivas();
 
     } catch (err: any) {
       console.error(err);
@@ -949,9 +1036,25 @@ export class Dashboard implements OnInit, OnDestroy {
 
       if (error) throw error;
 
+      // Actualizar localmente de inmediato
+      this.sesiones.forEach(s => {
+        if (s.ninoId === ninoId || s.id === this.selectedSesionForUpdate?.id) {
+          s.nombreNino = values.ninoNombre;
+          s.aliasNino = values.ninoAlias;
+          s.ninoFechaNacimiento = values.ninoFechaNacimiento;
+          s.ninoNotas = values.ninoNotas;
+        }
+      });
+      if (this.selectedSesionForUpdate) {
+        this.selectedSesionForUpdate.nombreNino = values.ninoNombre;
+        this.selectedSesionForUpdate.aliasNino = values.ninoAlias;
+        this.selectedSesionForUpdate.ninoFechaNacimiento = values.ninoFechaNacimiento;
+        this.selectedSesionForUpdate.ninoNotas = values.ninoNotas;
+      }
+
       this.mostrarToast('Datos del niño actualizados exitosamente.', 'success');
       this.cerrarDialogoActualizarNino();
-      this.cargarSesionesActivas();
+      await this.cargarSesionesActivas();
 
     } catch (err: any) {
       console.error(err);
