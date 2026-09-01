@@ -75,10 +75,19 @@
             </div>
             <div>
               <label class="block text-sm font-semibold text-gray-700">Parentesco con el niño(a)</label>
-              <input type="text" formControlName="tutorParentesco"
-                     class="mt-2 block w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
-                     [ngClass]="{'border-red-300 bg-red-50': ingresoForm.get('tutorParentesco')?.invalid && ingresoForm.get('tutorParentesco')?.touched}"
-                     placeholder="Ej. Madre, Padre, Tía...">
+              <select formControlName="tutorParentesco"
+                      class="mt-2 block w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm bg-white text-gray-700"
+                      [ngClass]="{'border-red-300 bg-red-50': ingresoForm.get('tutorParentesco')?.invalid && ingresoForm.get('tutorParentesco')?.touched}">
+                <option value="" disabled selected>Seleccione el parentesco...</option>
+                <option value="Mamá">Mamá</option>
+                <option value="Papá">Papá</option>
+                <option value="Tio (a)">Tio (a)</option>
+                <option value="Abuelo(a)">Abuelo(a)</option>
+                <option value="Hermano (a)">Hermano (a)</option>
+                <option value="Nana">Nana</option>
+                <option value="Otro familiar">Otro familiar</option>
+                <option value="Otro cuidador ( no familiar)">Otro cuidador ( no familiar)</option>
+              </select>
               @if (ingresoForm.get('tutorParentesco')?.invalid && ingresoForm.get('tutorParentesco')?.touched) {
                 <p class="mt-1.5 text-xs text-red-600 font-medium flex items-center gap-1">
                   <svg class="w-3.5 h-3.5 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>
