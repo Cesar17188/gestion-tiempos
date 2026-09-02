@@ -85,17 +85,19 @@ serve(async (req: Request) => {
     const nombreNormalizado = String(nombre).trim();
     const rolValido = (rol === "ADMINISTRADOR" || rol === "ENCARGADO") ? rol : "ENCARGADO";
 
-    // 4. Enviar Invitación mediante Supabase Auth Admin
-    const { data: inviteData, error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(
-      emailNormalizado,
-      {
-        data: {
-          nombre: nombreNormalizado,
-          rol: rolValido,
-        },
-        redirectTo: redirectTo || undefined,
-      }
-    );
+    // 4. Generar contraseña temporal segura
+    const tempPassword = "VP!" + Math.random().toString(36).slice(-8) + "Aa9#";
+
+    // 5. Crear usuario directamente para saltar limites de envio de correo
+    const { data: inviteData, error: inviteError } = await supabaseAdmin.auth.admin.createUser({
+      email: emailNormalizado,
+      password: tempPassword,
+      email_confirm: true,
+      user_metadata: {
+        nombre: nombreNormalizado,
+        rol: rolValido,
+      },
+    });
 
     if (inviteError) {
       // Si el usuario ya existe en auth.users
@@ -113,15 +115,16 @@ serve(async (req: Request) => {
             activo: true,
           });
 
-          // Disparamos un correo de recuperación/acceso
-          await supabaseAdmin.auth.resetPasswordForEmail(emailNormalizado, {
-            redirectTo: redirectTo || undefined,
+          // Actualizamos la contraseña para poder darsela al administrador
+          await supabaseAdmin.auth.admin.updateUserById(existingUser.id, {
+            password: tempPassword
           });
 
           return new Response(
             JSON.stringify({
               success: true,
-              message: `El usuario ya existía en el sistema. Se actualizó su perfil y se envió un correo para acceder o restablecer su contraseña a ${emailNormalizado}.`,
+              message: `El usuario ya existía en el sistema. Se reactivó su perfil.`,
+              password: tempPassword,
               user: existingUser,
             }),
             { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -155,7 +158,8 @@ serve(async (req: Request) => {
     return new Response(
       JSON.stringify({
         success: true,
-        message: `Invitación enviada con éxito a ${emailNormalizado}. El colaborador recibirá un enlace para definir su contraseña y acceder.`,
+        message: `El colaborador ha sido registrado con éxito de forma directa, sin depender de los correos automáticos.`,
+        password: tempPassword,
         user: nuevoUsuario,
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }

@@ -245,9 +245,13 @@ export class AdminConfig implements OnInit {
             return;
           }
         } else {
+          let extraMsg = '';
+          if (data?.password) {
+            extraMsg = `\n\nContraseña temporal generada: ${data.password}\n\nCopia y comparte esta contraseña con el colaborador de forma segura para que pueda ingresar.`;
+          }
           await this.abrirDialogo(
-            '¡Invitación Enviada!',
-            data?.message || `Se ha enviado un correo con el enlace de acceso a ${email}.`,
+            '¡Colaborador Registrado!',
+            (data?.message || `El colaborador ha sido registrado con éxito.`) + extraMsg,
             'Aceptar'
           );
           this.personalForm.reset({ rol: 'ENCARGADO' });
@@ -303,11 +307,10 @@ export class AdminConfig implements OnInit {
 
     if (signUpError) {
       if (signUpError.message?.toLowerCase().includes('already registered') || signUpError.message?.toLowerCase().includes('already exists')) {
-        // Enviar correo de restablecimiento si ya existe
-        await this.supabase.auth.resetPasswordForEmail(emailNormalizado, { redirectTo });
+        // Ya existe el usuario
         await this.abrirDialogo(
           'Usuario Ya Existente',
-          `El correo ${emailNormalizado} ya existe en el sistema. Se le ha enviado un correo para restablecer o definir su contraseña.`,
+          `El correo ${emailNormalizado} ya existe en el sistema. Dile al colaborador que inicie sesión con su contraseña o use 'Olvidé mi contraseña' en la pantalla de inicio.`,
           'Aceptar'
         );
         this.personalForm.reset({ rol: 'ENCARGADO' });
@@ -332,12 +335,9 @@ export class AdminConfig implements OnInit {
         console.warn('Nota al sincronizar perfil:', perfilError);
       }
 
-      // Enviar enlace de restablecimiento para que el colaborador elija su propia contraseña
-      await this.supabase.auth.resetPasswordForEmail(emailNormalizado, { redirectTo });
-
       await this.abrirDialogo(
         '¡Colaborador Registrado Exitosamente!',
-        `Se ha creado la cuenta en la base de datos para ${nombreNormalizado} (${rolValido === 'ENCARGADO' ? 'Anfitriona' : 'Administrador General'}).\n\nSe ha enviado un correo a ${emailNormalizado} con el enlace para definir su contraseña y acceder.`,
+        `Se ha creado la cuenta para ${nombreNormalizado} (${rolValido === 'ENCARGADO' ? 'Anfitriona' : 'Administrador General'}).\n\nContraseña temporal: ${tempPassword}\n\nPor favor, entrega esta contraseña al colaborador (Supabase podría requerir validación de correo si está activado).`,
         'Aceptar'
       );
 
