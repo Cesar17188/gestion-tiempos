@@ -25,7 +25,9 @@
 
 html, body {
   font-family: 'Fredoka', sans-serif;
+  background-color: #FEE5D2; /* Fallback absoluto */
   background-color: var(--color-fondo);
+  color: #8B7D6C; /* Fallback absoluto */
   color: var(--color-texto-normal);
   margin: 0;
   padding: 0;
