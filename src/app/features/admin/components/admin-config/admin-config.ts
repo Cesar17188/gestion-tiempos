@@ -233,7 +233,7 @@ export class AdminConfig implements OnInit {
           }
         });
 
-        const response = await this.ejecutarConTimeout(invitePromise, 5000);
+        const response = await this.ejecutarConTimeout(invitePromise, 12000);
         const { data, error } = response;
 
         if (error || data?.error) {
@@ -268,7 +268,16 @@ export class AdminConfig implements OnInit {
       }
     } catch (err: any) {
       console.error('Error al registrar colaborador:', err);
-      await this.abrirDialogo('Error al procesar registro', err?.message || err, 'Entendido');
+      const errorMsg = String(err?.message || err);
+      if (errorMsg.toLowerCase().includes('rate limit')) {
+        await this.abrirDialogo(
+          'Límite de correos por hora superado',
+          'Supabase restringe el envío a un máximo de 3-4 correos por hora en su servidor SMTP por defecto.\n\nPara registrar usuarios de inmediato sin restricciones:\n1. Ve a tu Supabase Dashboard -> Authentication -> Providers -> Email.\n2. Desactiva la casilla "Confirm email" y guarda los cambios.\n\nAsí los colaboradores quedarán activos automáticamente con su contraseña temporal.',
+          'Entendido'
+        );
+      } else {
+        await this.abrirDialogo('Error al procesar registro', errorMsg, 'Entendido');
+      }
     } finally {
       this.isSaving = false;
       this.cdr.detectChanges();
@@ -315,6 +324,14 @@ export class AdminConfig implements OnInit {
         );
         this.personalForm.reset({ rol: 'ENCARGADO' });
         await this.cargarDatos();
+        return;
+      }
+      if (signUpError.message?.toLowerCase().includes('rate limit')) {
+        await this.abrirDialogo(
+          'Límite de correos superado (Supabase)',
+          'Supabase bloquea el registro porque se superó el límite de correos por hora (máximo 3-4 por hora en el plan gratuito).\n\nCÓMO SOLUCIONARLO EN 1 MINUTO:\n1. Ve a Supabase Dashboard -> Authentication -> Providers -> Email.\n2. Desmarca la opción "Confirm email" y haz clic en Save.\n\nAl desactivar esa opción, los registros no enviarán correos y podrás crear todos los usuarios que necesites con su contraseña temporal.',
+          'Entendido'
+        );
         return;
       }
       throw signUpError;

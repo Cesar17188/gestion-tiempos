@@ -807,6 +807,10 @@ export class Ingreso implements OnInit {
 
             // Nombre Completo Niño(s)
             mensajeBienvenida = mensajeBienvenida.replace(/\{nombre_nino\}|\{nino\}|\{niño\}|\{nombre_niño\}|\[nombre_nino\]|\[nino\]|\[niño\]|\[nombre_niño\]/gi, nombresCompletosNinos ? `*${nombresCompletosNinos}*` : '');
+            
+            // Minutos de la sesión
+            const minutosAsignados = values.tiempoMinutos || '30';
+            mensajeBienvenida = mensajeBienvenida.replace(/\{minutos\}|\{tiempo\}|\[minutos\]|\[tiempo\]/gi, minutosAsignados);
           }
         } catch (configErr) {
           console.error('Error cargando mensaje de bienvenida configurado:', configErr);
