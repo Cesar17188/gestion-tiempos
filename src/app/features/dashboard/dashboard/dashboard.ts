@@ -183,8 +183,9 @@ export class Dashboard implements OnInit, OnDestroy {
     try {
       const { data } = await this.supabaseService.db('configuracion_sistema').select('*').limit(1).maybeSingle();
       if (data) {
-        if (data.precio_minuto_extra !== undefined && data.precio_minuto_extra !== null) {
-          this.precioPaqueteExtra = data.precio_minuto_extra;
+        const precioExtra = data.precio_minuto_extra ?? data.precio_paquete_extra ?? data.precio_extra;
+        if (precioExtra !== undefined && precioExtra !== null && !isNaN(Number(precioExtra))) {
+          this.precioPaqueteExtra = Number(precioExtra);
         }
         if (data.titulo_dashboard) {
           this.tituloDashboard = data.titulo_dashboard;
@@ -200,6 +201,11 @@ export class Dashboard implements OnInit, OnDestroy {
         }
         if (data.msg_bienvenida) {
           this.msgBienvenida = data.msg_bienvenida;
+        }
+      } else if (typeof window !== 'undefined' && window.localStorage) {
+        const localPrecio = localStorage.getItem('precio_minuto_extra');
+        if (localPrecio && !isNaN(parseFloat(localPrecio))) {
+          this.precioPaqueteExtra = parseFloat(localPrecio);
         }
       }
     } catch (e) {
@@ -350,6 +356,11 @@ export class Dashboard implements OnInit, OnDestroy {
           ultimoTutor = tutoresArray;
         }
         
+        const costoBaseVal = item.costo_base !== null && item.costo_base !== undefined ? Number(item.costo_base) : 7;
+        const costoExtraVal = item.costo_extra !== null && item.costo_extra !== undefined ? Number(item.costo_extra) : 0;
+        const minutosExtraVal = item.minutos_extra !== null && item.minutos_extra !== undefined ? Number(item.minutos_extra) : 0;
+        const adultosExtraVal = item.adultos_adicionales !== null && item.adultos_adicionales !== undefined ? Number(item.adultos_adicionales) : 0;
+
         return {
           id: item.id,
           ninoId: item.nino_id,
@@ -370,12 +381,12 @@ export class Dashboard implements OnInit, OnDestroy {
           minutosRestantes: 0,
           tiempoRestanteStr: '00:00',
           estadoAlerta: 'normal',
-          costoBase: item.costo_base || 30, // Fallback si no está seteado
-          minutosExtra: item.minutos_extra || 0,
-          costoExtra: item.costo_extra || 0,
-          adultosAdicionales: item.adultos_adicionales || 0,
-          extensionAplicada: (item.minutos_extra || 0) > 0,
-          costoTotal: (item.costo_base || 30) + (item.costo_extra || 0),
+          costoBase: costoBaseVal,
+          minutosExtra: minutosExtraVal,
+          costoExtra: costoExtraVal,
+          adultosAdicionales: adultosExtraVal,
+          extensionAplicada: minutosExtraVal > 0,
+          costoTotal: costoBaseVal + costoExtraVal,
           tipologia: item.tipologia || '',
           observacionesTipologia: item.observaciones_tipologia || ''
         };
@@ -630,15 +641,16 @@ export class Dashboard implements OnInit, OnDestroy {
   async retirarSesion(sesion: SesionJuego) {
     if (sesion.minutosRestantes >= 30) {
       // 1. Si hay 30 minutos o más, se restan 30 minutos
-      let nuevosMinutosExtra = sesion.minutosExtra;
-      let nuevoCostoExtra = sesion.costoExtra;
-      let nuevoCostoBase = sesion.costoBase;
+      let nuevosMinutosExtra = Number(sesion.minutosExtra || 0);
+      let nuevoCostoExtra = Number(sesion.costoExtra || 0);
+      let nuevoCostoBase = Number(sesion.costoBase || 7);
+      const precioExtra = Number(this.precioPaqueteExtra || 3);
       
       // Revertimos también los costos extra si existen para mantener consistencia
-      if (sesion.minutosExtra > 0) {
-        nuevosMinutosExtra = Math.max(0, sesion.minutosExtra - 30);
-        nuevoCostoExtra = Math.max(0, sesion.costoExtra - this.precioPaqueteExtra);
-      } else if (sesion.costoBase === 10) {
+      if (nuevosMinutosExtra > 0) {
+        nuevosMinutosExtra = Math.max(0, nuevosMinutosExtra - 30);
+        nuevoCostoExtra = Math.max(0, nuevoCostoExtra - precioExtra);
+      } else if (nuevoCostoBase === 10) {
         // Si no hay tiempo extra pero el costo base es de 60 minutos ($10), lo reducimos al de 30 minutos ($7)
         nuevoCostoBase = 7;
       }
@@ -662,8 +674,9 @@ export class Dashboard implements OnInit, OnDestroy {
         sesion.minutosExtra = nuevosMinutosExtra;
         sesion.costoExtra = nuevoCostoExtra;
         sesion.costoBase = nuevoCostoBase;
-        sesion.costoTotal = sesion.costoBase + sesion.costoExtra;
+        sesion.costoTotal = nuevoCostoBase + nuevoCostoExtra;
         this.actualizarTiempos();
+        this.cdr.detectChanges();
         this.mostrarToast('Se han restado 30 minutos de la sesión.', 'success');
       }
     } else {
@@ -690,6 +703,7 @@ export class Dashboard implements OnInit, OnDestroy {
       } else {
         sesion.horaSalidaEstimada = nuevaSalidaEstimada;
         this.actualizarTiempos(); // Se encarga de marcar como expirado y finalizar en BD
+        this.cdr.detectChanges();
         this.mostrarToast('Sesión finalizada exitosamente.', 'success');
       }
     }
@@ -704,8 +718,10 @@ export class Dashboard implements OnInit, OnDestroy {
 
     // Calculamos la nueva fecha de salida estimada sumando 30 minutos (30 * 60000 milisegundos)
     const nuevaSalidaEstimada = new Date(sesion.horaSalidaEstimada.getTime() + 30 * 60000);
-    const nuevosMinutosExtra = sesion.minutosExtra + 30;
-    const nuevoCostoExtra = sesion.costoExtra + this.precioPaqueteExtra;
+    const nuevosMinutosExtra = Number(sesion.minutosExtra || 0) + 30;
+    const precioExtra = Number(this.precioPaqueteExtra || 3);
+    const nuevoCostoExtra = Number(sesion.costoExtra || 0) + precioExtra;
+    const costoBase = Number(sesion.costoBase || 7);
 
     const { error } = await this.supabaseService.db('sesiones_juego')
       .update({
@@ -725,9 +741,10 @@ export class Dashboard implements OnInit, OnDestroy {
       sesion.horaSalidaEstimada = nuevaSalidaEstimada;
       sesion.minutosExtra = nuevosMinutosExtra;
       sesion.costoExtra = nuevoCostoExtra;
-      sesion.costoTotal = sesion.costoBase + sesion.costoExtra;
+      sesion.costoTotal = costoBase + nuevoCostoExtra;
       sesion.extensionAplicada = true;
       this.actualizarTiempos();
+      this.cdr.detectChanges();
       this.mostrarToast('Se agregaron 30 minutos a la sesión.', 'success');
     }
   }
