@@ -217,9 +217,7 @@
             </svg>
             Avisar
           </button>
-          <button (click)="agregarMediaHora(sesion)" class="btn btn-add-time" title="Agregar 30 minutos extras"
-            [disabled]="sesion.estadoAlerta === 'expirado'"
-            [ngStyle]="{'opacity': sesion.estadoAlerta === 'expirado' ? '0.5' : '1', 'cursor': sesion.estadoAlerta === 'expirado' ? 'not-allowed' : 'pointer'}">
+          <button (click)="agregarMediaHora(sesion)" class="btn btn-add-time" title="Agregar 30 minutos extras">
             <svg class="icon-small" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
             </svg>

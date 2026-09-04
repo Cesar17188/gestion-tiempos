@@ -711,13 +711,13 @@ export class Dashboard implements OnInit, OnDestroy {
 
   // 5. AGREGAR 30 MINUTOS A LA SESIÓN
   async agregarMediaHora(sesion: SesionJuego) {
-    if (sesion.estadoAlerta === 'expirado') {
-      this.mostrarToast('La sesión ha expirado. Debe iniciar una nueva sesión.', 'error');
+    if (sesion.oculta) {
       return;
     }
 
-    // Calculamos la nueva fecha de salida estimada sumando 30 minutos (30 * 60000 milisegundos)
-    const nuevaSalidaEstimada = new Date(sesion.horaSalidaEstimada.getTime() + 30 * 60000);
+    // Calculamos la nueva fecha de salida estimada sumando 30 minutos a partir de la salida estimada previa o desde la hora actual (si ya expiró)
+    const baseTime = Math.max(sesion.horaSalidaEstimada.getTime(), Date.now());
+    const nuevaSalidaEstimada = new Date(baseTime + 30 * 60000);
     const nuevosMinutosExtra = Number(sesion.minutosExtra || 0) + 30;
     const precioExtra = Number(this.precioPaqueteExtra || 3);
     const nuevoCostoExtra = Number(sesion.costoExtra || 0) + precioExtra;
@@ -737,12 +737,13 @@ export class Dashboard implements OnInit, OnDestroy {
       this.mostrarToast('Hubo un error al intentar agregar 30 minutos.', 'error');
     } else {
       console.log('Se agregaron 30 minutos exitosamente a la sesión.');
-      // Update local state temporarily so UI is instantly updated, real-time sync will overwrite it
+      // Actualizamos estado local
       sesion.horaSalidaEstimada = nuevaSalidaEstimada;
       sesion.minutosExtra = nuevosMinutosExtra;
       sesion.costoExtra = nuevoCostoExtra;
       sesion.costoTotal = costoBase + nuevoCostoExtra;
       sesion.extensionAplicada = true;
+      sesion.oculta = false;
       this.actualizarTiempos();
       this.cdr.detectChanges();
       this.mostrarToast('Se agregaron 30 minutos a la sesión.', 'success');
