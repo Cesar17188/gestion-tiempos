@@ -146,7 +146,8 @@ export class Dashboard implements OnInit, OnDestroy {
     tutorParentesco: ['', [Validators.required]],
     tutorCorreo: ['', [validarCorreo()]],
     tutorContactoAdicional: [''],
-    tutorWhatsapp: ['', [Validators.required, validarTelefono()]]
+    tutorWhatsapp: ['', [Validators.required, validarTelefono()]],
+    adultosExtra: [0, [Validators.min(0)]]
   });
 
   ninoUpdateForm: FormGroup = this.fb.group({
@@ -187,6 +188,10 @@ export class Dashboard implements OnInit, OnDestroy {
         if (precioExtra !== undefined && precioExtra !== null && !isNaN(Number(precioExtra))) {
           this.precioPaqueteExtra = Number(precioExtra);
         }
+        const precioAdulto = data.precio_adulto_extra ?? data.precio_adulto;
+        if (precioAdulto !== undefined && precioAdulto !== null && !isNaN(Number(precioAdulto))) {
+          this.precioAdultoExtra = Number(precioAdulto);
+        }
         if (data.titulo_dashboard) {
           this.tituloDashboard = data.titulo_dashboard;
         } else if (typeof window !== 'undefined' && window.localStorage) {
@@ -206,6 +211,10 @@ export class Dashboard implements OnInit, OnDestroy {
         const localPrecio = localStorage.getItem('precio_minuto_extra');
         if (localPrecio && !isNaN(parseFloat(localPrecio))) {
           this.precioPaqueteExtra = parseFloat(localPrecio);
+        }
+        const localAdulto = localStorage.getItem('precio_adulto_extra');
+        if (localAdulto && !isNaN(parseFloat(localAdulto))) {
+          this.precioAdultoExtra = parseFloat(localAdulto);
         }
       }
     } catch (e) {
@@ -637,6 +646,16 @@ export class Dashboard implements OnInit, OnDestroy {
     }
   }
 
+  // Helpers para desglose exacto de costos en la tarjeta
+  obtenerCostoTiempoExtra(sesion: SesionJuego): number {
+    const costoAdultos = Number(sesion.adultosAdicionales || 0) * Number(this.precioAdultoExtra || 2);
+    return Math.max(0, Number(sesion.costoExtra || 0) - costoAdultos);
+  }
+
+  obtenerCostoAdultosExtra(sesion: SesionJuego): number {
+    return Number(sesion.adultosAdicionales || 0) * Number(this.precioAdultoExtra || 2);
+  }
+
   // FINALIZAR SESIÓN O RESTAR TIEMPO
   async retirarSesion(sesion: SesionJuego) {
     if (sesion.minutosRestantes >= 30) {
@@ -645,11 +664,12 @@ export class Dashboard implements OnInit, OnDestroy {
       let nuevoCostoExtra = Number(sesion.costoExtra || 0);
       let nuevoCostoBase = Number(sesion.costoBase || 7);
       const precioExtra = Number(this.precioPaqueteExtra || 3);
+      const costoAdultos = Number(sesion.adultosAdicionales || 0) * Number(this.precioAdultoExtra || 2);
       
-      // Revertimos también los costos extra si existen para mantener consistencia
+      // Revertimos solo el costo del tiempo extra si existen minutos extras agregados
       if (nuevosMinutosExtra > 0) {
         nuevosMinutosExtra = Math.max(0, nuevosMinutosExtra - 30);
-        nuevoCostoExtra = Math.max(0, nuevoCostoExtra - precioExtra);
+        nuevoCostoExtra = Math.max(costoAdultos, nuevoCostoExtra - precioExtra);
       } else if (nuevoCostoBase === 10) {
         // Si no hay tiempo extra pero el costo base es de 60 minutos ($10), lo reducimos al de 30 minutos ($7)
         nuevoCostoBase = 7;
@@ -808,7 +828,8 @@ export class Dashboard implements OnInit, OnDestroy {
       tutorParentesco: sesion.parentescoTutor || '',
       tutorWhatsapp: sesion.whatsapp || '',
       tutorCorreo: sesion.tutorCorreo || '',
-      tutorContactoAdicional: sesion.tutorContactoAdicional || ''
+      tutorContactoAdicional: sesion.tutorContactoAdicional || '',
+      adultosExtra: sesion.adultosAdicionales || 0
     });
     this.showUpdateTutorDialog = true;
   }
@@ -993,9 +1014,27 @@ export class Dashboard implements OnInit, OnDestroy {
         }
       }
 
-      // 3. Actualizar directamente el estado en memoria para actualización inmediata en la tarjeta
+      // 3. Actualizar la sesión con adultos extras y costos recalculados
+      const nuevosAdultosExtra = Math.max(0, parseInt(values.adultosExtra ?? 0, 10) || 0);
+      const adultosPrevios = Number(this.selectedSesionForUpdate.adultosAdicionales || 0);
+      const sesionId = this.selectedSesionForUpdate.id;
+      const costoBase = Number(this.selectedSesionForUpdate.costoBase || 7);
+      const costoTiempoExtra = Math.max(0, Number(this.selectedSesionForUpdate.costoExtra || 0) - (adultosPrevios * this.precioAdultoExtra));
+      const nuevoCostoExtra = costoTiempoExtra + (nuevosAdultosExtra * this.precioAdultoExtra);
+      const nuevoCostoTotal = costoBase + nuevoCostoExtra;
+
+      const { error: sesionUpdErr } = await this.supabaseService.db('sesiones_juego')
+        .update({
+          adultos_adicionales: nuevosAdultosExtra,
+          costo_extra: nuevoCostoExtra
+        })
+        .eq('id', sesionId);
+
+      if (sesionUpdErr) throw new Error(`Error al actualizar adultos extras: ${sesionUpdErr.message}`);
+
+      // 4. Actualizar directamente el estado en memoria para actualización inmediata en la tarjeta
       this.sesiones.forEach(s => {
-        if (s.ninoId === ninoId || s.id === this.selectedSesionForUpdate?.id) {
+        if (s.ninoId === ninoId || s.id === sesionId) {
           s.tutorId = tutorIdFinal || s.tutorId;
           s.tutorCedula = cedulaSanitizada;
           s.nombreTutor = nombreSanitizado;
@@ -1004,6 +1043,11 @@ export class Dashboard implements OnInit, OnDestroy {
           s.whatsapp = whatsappNormalizado;
           s.tutorCorreo = correoSanitizado;
           s.tutorContactoAdicional = contactoAdicionalSanitizado;
+        }
+        if (s.id === sesionId) {
+          s.adultosAdicionales = nuevosAdultosExtra;
+          s.costoExtra = nuevoCostoExtra;
+          s.costoTotal = nuevoCostoTotal;
         }
       });
 
@@ -1016,9 +1060,14 @@ export class Dashboard implements OnInit, OnDestroy {
         this.selectedSesionForUpdate.whatsapp = whatsappNormalizado;
         this.selectedSesionForUpdate.tutorCorreo = correoSanitizado;
         this.selectedSesionForUpdate.tutorContactoAdicional = contactoAdicionalSanitizado;
+        if (this.selectedSesionForUpdate.id === sesionId) {
+          this.selectedSesionForUpdate.adultosAdicionales = nuevosAdultosExtra;
+          this.selectedSesionForUpdate.costoExtra = nuevoCostoExtra;
+          this.selectedSesionForUpdate.costoTotal = nuevoCostoTotal;
+        }
       }
 
-      this.mostrarToast('Responsable actualizado exitosamente.', 'success');
+      this.mostrarToast('Responsable y adultos extras actualizados exitosamente.', 'success');
       this.cerrarDialogoActualizarTutor();
       
       // Recargar sesiones en segundo plano para sincronizar
