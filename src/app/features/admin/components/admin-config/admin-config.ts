@@ -117,10 +117,43 @@ export class AdminConfig implements OnInit {
             precioAdulto = 2;
           }
 
+          let precioMinutoExtra = config.precio_minuto_extra ?? config.precio_paquete_extra ?? config.precio_extra;
+          if (precioMinutoExtra === undefined || precioMinutoExtra === null) {
+            if (typeof window !== 'undefined' && window.localStorage) {
+              const localExtra = localStorage.getItem('precio_minuto_extra');
+              if (localExtra) precioMinutoExtra = parseFloat(localExtra);
+            }
+          }
+          if (precioMinutoExtra === undefined || precioMinutoExtra === null || isNaN(Number(precioMinutoExtra))) {
+            precioMinutoExtra = 3;
+          }
+
+          let precioBase = config.precio_base;
+          if (precioBase === undefined || precioBase === null) {
+            if (typeof window !== 'undefined' && window.localStorage) {
+              const localBase = localStorage.getItem('precio_base');
+              if (localBase) precioBase = parseFloat(localBase);
+            }
+          }
+          if (precioBase === undefined || precioBase === null || isNaN(Number(precioBase))) {
+            precioBase = 7;
+          }
+
+          let minutosBase = config.minutos_base;
+          if (minutosBase === undefined || minutosBase === null) {
+            if (typeof window !== 'undefined' && window.localStorage) {
+              const localMinutos = localStorage.getItem('minutos_base');
+              if (localMinutos) minutosBase = parseInt(localMinutos, 10);
+            }
+          }
+          if (minutosBase === undefined || minutosBase === null || isNaN(Number(minutosBase))) {
+            minutosBase = 30;
+          }
+
           this.configForm.patchValue({
-            precio_base: config.precio_base ?? 0,
-            minutos_base: config.minutos_base ?? 30,
-            precio_minuto_extra: config.precio_minuto_extra ?? 3,
+            precio_base: Number(precioBase),
+            minutos_base: Number(minutosBase),
+            precio_minuto_extra: Number(precioMinutoExtra),
             precio_adulto_extra: Number(precioAdulto),
             msg_bienvenida: config.msg_bienvenida ?? '',
             msg_advertencia_5min: config.msg_advertencia_5min ?? '',
@@ -162,8 +195,12 @@ export class AdminConfig implements OnInit {
       }
       if (this.columnasDisponibles.size === 0 || this.columnasDisponibles.has('precio_minuto_extra')) {
         payload['precio_minuto_extra'] = Number(formVal.precio_minuto_extra);
+      } else if (this.columnasDisponibles.has('precio_paquete_extra')) {
+        payload['precio_paquete_extra'] = Number(formVal.precio_minuto_extra);
+      } else if (this.columnasDisponibles.has('precio_extra')) {
+        payload['precio_extra'] = Number(formVal.precio_minuto_extra);
       }
-      if (this.columnasDisponibles.has('precio_adulto_extra')) {
+      if (this.columnasDisponibles.size === 0 || this.columnasDisponibles.has('precio_adulto_extra')) {
         payload['precio_adulto_extra'] = Number(formVal.precio_adulto_extra);
       } else if (this.columnasDisponibles.has('precio_adulto')) {
         payload['precio_adulto'] = Number(formVal.precio_adulto_extra);
@@ -177,17 +214,26 @@ export class AdminConfig implements OnInit {
       if (this.columnasDisponibles.size === 0 || this.columnasDisponibles.has('msg_tiempo_cumplido')) {
         payload['msg_tiempo_cumplido'] = formVal.msg_tiempo_cumplido;
       }
-      if (this.columnasDisponibles.has('titulo_dashboard')) {
+      if (this.columnasDisponibles.size === 0 || this.columnasDisponibles.has('titulo_dashboard')) {
         payload['titulo_dashboard'] = formVal.titulo_dashboard;
       }
 
-      // Guardado local persistente del título y precio adulto extra
+      // Guardado local persistente de respaldo para garantizar disponibilidad inmediata
       if (typeof window !== 'undefined' && window.localStorage) {
         if (formVal.titulo_dashboard) {
           localStorage.setItem('titulo_dashboard', formVal.titulo_dashboard);
         }
         if (formVal.precio_adulto_extra !== undefined && formVal.precio_adulto_extra !== null) {
           localStorage.setItem('precio_adulto_extra', formVal.precio_adulto_extra.toString());
+        }
+        if (formVal.precio_minuto_extra !== undefined && formVal.precio_minuto_extra !== null) {
+          localStorage.setItem('precio_minuto_extra', formVal.precio_minuto_extra.toString());
+        }
+        if (formVal.precio_base !== undefined && formVal.precio_base !== null) {
+          localStorage.setItem('precio_base', formVal.precio_base.toString());
+        }
+        if (formVal.minutos_base !== undefined && formVal.minutos_base !== null) {
+          localStorage.setItem('minutos_base', formVal.minutos_base.toString());
         }
       }
 

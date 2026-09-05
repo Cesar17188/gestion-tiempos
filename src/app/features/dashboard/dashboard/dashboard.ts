@@ -84,6 +84,7 @@ export class Dashboard implements OnInit, OnDestroy {
   precioFraccionBase = 4.00;
   precioAdultoExtra = 2.00;
   precioPaqueteExtra: number = 3;
+  minutosBase: number = 30;
   minutosToleranciaAlerta = 5;
   tituloDashboard: string = 'Panel de Control - Sucursal Norte';
   msgExpirado = '';
@@ -187,11 +188,38 @@ export class Dashboard implements OnInit, OnDestroy {
         const precioExtra = data.precio_minuto_extra ?? data.precio_paquete_extra ?? data.precio_extra;
         if (precioExtra !== undefined && precioExtra !== null && !isNaN(Number(precioExtra))) {
           this.precioPaqueteExtra = Number(precioExtra);
+        } else if (typeof window !== 'undefined' && window.localStorage) {
+          const localPrecio = localStorage.getItem('precio_minuto_extra');
+          if (localPrecio && !isNaN(parseFloat(localPrecio))) {
+            this.precioPaqueteExtra = parseFloat(localPrecio);
+          }
         }
+
         const precioAdulto = data.precio_adulto_extra ?? data.precio_adulto;
         if (precioAdulto !== undefined && precioAdulto !== null && !isNaN(Number(precioAdulto))) {
           this.precioAdultoExtra = Number(precioAdulto);
+        } else if (typeof window !== 'undefined' && window.localStorage) {
+          const localAdulto = localStorage.getItem('precio_adulto_extra');
+          if (localAdulto && !isNaN(parseFloat(localAdulto))) {
+            this.precioAdultoExtra = parseFloat(localAdulto);
+          }
         }
+
+        const precioBase = data.precio_base;
+        if (precioBase !== undefined && precioBase !== null && !isNaN(Number(precioBase))) {
+          this.precioHoraBase = Number(precioBase);
+        } else if (typeof window !== 'undefined' && window.localStorage) {
+          const localBase = localStorage.getItem('precio_base');
+          if (localBase && !isNaN(parseFloat(localBase))) {
+            this.precioHoraBase = parseFloat(localBase);
+          }
+        }
+
+        const minutosBase = data.minutos_base;
+        if (minutosBase !== undefined && minutosBase !== null && !isNaN(Number(minutosBase))) {
+          this.minutosBase = Number(minutosBase);
+        }
+
         if (data.titulo_dashboard) {
           this.tituloDashboard = data.titulo_dashboard;
         } else if (typeof window !== 'undefined' && window.localStorage) {
@@ -215,6 +243,14 @@ export class Dashboard implements OnInit, OnDestroy {
         const localAdulto = localStorage.getItem('precio_adulto_extra');
         if (localAdulto && !isNaN(parseFloat(localAdulto))) {
           this.precioAdultoExtra = parseFloat(localAdulto);
+        }
+        const localBase = localStorage.getItem('precio_base');
+        if (localBase && !isNaN(parseFloat(localBase))) {
+          this.precioHoraBase = parseFloat(localBase);
+        }
+        const localTitle = localStorage.getItem('titulo_dashboard');
+        if (localTitle) {
+          this.tituloDashboard = localTitle;
         }
       }
     } catch (e) {
@@ -437,6 +473,13 @@ export class Dashboard implements OnInit, OnDestroy {
           this.cargarSesionesActivas();
         }
       )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'configuracion_sistema' },
+        () => {
+          this.cargarConfiguracion();
+        }
+      )
       .subscribe();
   }
 
@@ -648,12 +691,14 @@ export class Dashboard implements OnInit, OnDestroy {
 
   // Helpers para desglose exacto de costos en la tarjeta
   obtenerCostoTiempoExtra(sesion: SesionJuego): number {
-    const costoAdultos = Number(sesion.adultosAdicionales || 0) * Number(this.precioAdultoExtra || 2);
+    const precioAdulto = Number(this.precioAdultoExtra ?? 2);
+    const costoAdultos = Number(sesion.adultosAdicionales || 0) * precioAdulto;
     return Math.max(0, Number(sesion.costoExtra || 0) - costoAdultos);
   }
 
   obtenerCostoAdultosExtra(sesion: SesionJuego): number {
-    return Number(sesion.adultosAdicionales || 0) * Number(this.precioAdultoExtra || 2);
+    const precioAdulto = Number(this.precioAdultoExtra ?? 2);
+    return Number(sesion.adultosAdicionales || 0) * precioAdulto;
   }
 
   // FINALIZAR SESIÓN O RESTAR TIEMPO
@@ -662,17 +707,17 @@ export class Dashboard implements OnInit, OnDestroy {
       // 1. Si hay 30 minutos o más, se restan 30 minutos
       let nuevosMinutosExtra = Number(sesion.minutosExtra || 0);
       let nuevoCostoExtra = Number(sesion.costoExtra || 0);
-      let nuevoCostoBase = Number(sesion.costoBase || 7);
-      const precioExtra = Number(this.precioPaqueteExtra || 3);
-      const costoAdultos = Number(sesion.adultosAdicionales || 0) * Number(this.precioAdultoExtra || 2);
+      let nuevoCostoBase = Number(sesion.costoBase || this.precioHoraBase || 7);
+      const precioExtra = Number(this.precioPaqueteExtra ?? 3);
+      const precioAdulto = Number(this.precioAdultoExtra ?? 2);
+      const costoAdultos = Number(sesion.adultosAdicionales || 0) * precioAdulto;
       
       // Revertimos solo el costo del tiempo extra si existen minutos extras agregados
       if (nuevosMinutosExtra > 0) {
         nuevosMinutosExtra = Math.max(0, nuevosMinutosExtra - 30);
         nuevoCostoExtra = Math.max(costoAdultos, nuevoCostoExtra - precioExtra);
-      } else if (nuevoCostoBase === 10) {
-        // Si no hay tiempo extra pero el costo base es de 60 minutos ($10), lo reducimos al de 30 minutos ($7)
-        nuevoCostoBase = 7;
+      } else if (nuevoCostoBase > (this.precioHoraBase || 7)) {
+        nuevoCostoBase = Number(this.precioHoraBase || 7);
       }
 
       const nuevaSalidaEstimada = new Date(sesion.horaSalidaEstimada.getTime() - 30 * 60000);
@@ -739,9 +784,9 @@ export class Dashboard implements OnInit, OnDestroy {
     const baseTime = Math.max(sesion.horaSalidaEstimada.getTime(), Date.now());
     const nuevaSalidaEstimada = new Date(baseTime + 30 * 60000);
     const nuevosMinutosExtra = Number(sesion.minutosExtra || 0) + 30;
-    const precioExtra = Number(this.precioPaqueteExtra || 3);
+    const precioExtra = Number(this.precioPaqueteExtra ?? 3);
     const nuevoCostoExtra = Number(sesion.costoExtra || 0) + precioExtra;
-    const costoBase = Number(sesion.costoBase || 7);
+    const costoBase = Number(sesion.costoBase || this.precioHoraBase || 7);
 
     const { error } = await this.supabaseService.db('sesiones_juego')
       .update({
@@ -1015,12 +1060,13 @@ export class Dashboard implements OnInit, OnDestroy {
       }
 
       // 3. Actualizar la sesión con adultos extras y costos recalculados
+      const precioAdulto = Number(this.precioAdultoExtra ?? 2);
       const nuevosAdultosExtra = Math.max(0, parseInt(values.adultosExtra ?? 0, 10) || 0);
       const adultosPrevios = Number(this.selectedSesionForUpdate.adultosAdicionales || 0);
       const sesionId = this.selectedSesionForUpdate.id;
-      const costoBase = Number(this.selectedSesionForUpdate.costoBase || 7);
-      const costoTiempoExtra = Math.max(0, Number(this.selectedSesionForUpdate.costoExtra || 0) - (adultosPrevios * this.precioAdultoExtra));
-      const nuevoCostoExtra = costoTiempoExtra + (nuevosAdultosExtra * this.precioAdultoExtra);
+      const costoBase = Number(this.selectedSesionForUpdate.costoBase || this.precioHoraBase || 7);
+      const costoTiempoExtra = Math.max(0, Number(this.selectedSesionForUpdate.costoExtra || 0) - (adultosPrevios * precioAdulto));
+      const nuevoCostoExtra = costoTiempoExtra + (nuevosAdultosExtra * precioAdulto);
       const nuevoCostoTotal = costoBase + nuevoCostoExtra;
 
       const { error: sesionUpdErr } = await this.supabaseService.db('sesiones_juego')

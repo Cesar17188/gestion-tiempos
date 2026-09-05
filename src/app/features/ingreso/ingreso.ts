@@ -43,6 +43,9 @@ export class Ingreso implements OnInit {
   private cdr = inject(ChangeDetectorRef);
 
   precioAdultoExtra = 2.00;
+  precioPaqueteExtra = 3.00;
+  precioBase = 7.00;
+  minutosBase = 30;
   isLoading = false;
   isSearching = false;
   errorMessage = '';
@@ -94,19 +97,57 @@ export class Ingreso implements OnInit {
         .maybeSingle();
 
       if (config) {
-        const precio = config.precio_adulto_extra ?? config.precio_adulto;
-        if (precio !== undefined && precio !== null && !isNaN(Number(precio))) {
-          this.precioAdultoExtra = Number(precio);
+        const precioAdulto = config.precio_adulto_extra ?? config.precio_adulto;
+        if (precioAdulto !== undefined && precioAdulto !== null && !isNaN(Number(precioAdulto))) {
+          this.precioAdultoExtra = Number(precioAdulto);
+        } else if (typeof window !== 'undefined' && window.localStorage) {
+          const localAdulto = localStorage.getItem('precio_adulto_extra');
+          if (localAdulto && !isNaN(parseFloat(localAdulto))) {
+            this.precioAdultoExtra = parseFloat(localAdulto);
+          }
+        }
+
+        const precioExtra = config.precio_minuto_extra ?? config.precio_paquete_extra ?? config.precio_extra;
+        if (precioExtra !== undefined && precioExtra !== null && !isNaN(Number(precioExtra))) {
+          this.precioPaqueteExtra = Number(precioExtra);
+        } else if (typeof window !== 'undefined' && window.localStorage) {
+          const localPrecio = localStorage.getItem('precio_minuto_extra');
+          if (localPrecio && !isNaN(parseFloat(localPrecio))) {
+            this.precioPaqueteExtra = parseFloat(localPrecio);
+          }
+        }
+
+        const precioBase = config.precio_base;
+        if (precioBase !== undefined && precioBase !== null && !isNaN(Number(precioBase))) {
+          this.precioBase = Number(precioBase);
+        } else if (typeof window !== 'undefined' && window.localStorage) {
+          const localBase = localStorage.getItem('precio_base');
+          if (localBase && !isNaN(parseFloat(localBase))) {
+            this.precioBase = parseFloat(localBase);
+          }
+        }
+
+        const minutosBase = config.minutos_base;
+        if (minutosBase !== undefined && minutosBase !== null && !isNaN(Number(minutosBase))) {
+          this.minutosBase = Number(minutosBase);
         }
       } else if (typeof window !== 'undefined' && window.localStorage) {
         const localAdulto = localStorage.getItem('precio_adulto_extra');
         if (localAdulto && !isNaN(parseFloat(localAdulto))) {
           this.precioAdultoExtra = parseFloat(localAdulto);
         }
+        const localPrecio = localStorage.getItem('precio_minuto_extra');
+        if (localPrecio && !isNaN(parseFloat(localPrecio))) {
+          this.precioPaqueteExtra = parseFloat(localPrecio);
+        }
+        const localBase = localStorage.getItem('precio_base');
+        if (localBase && !isNaN(parseFloat(localBase))) {
+          this.precioBase = parseFloat(localBase);
+        }
       }
       this.cdr.detectChanges();
     } catch (e) {
-      console.error('Error al cargar tarifa de adulto extra:', e);
+      console.error('Error al cargar tarifa de adulto extra y configuración:', e);
     }
   }
 
@@ -743,13 +784,15 @@ export class Ingreso implements OnInit {
 
         // 3. PASO TRES: Calcular tiempos y abrir la sesión de juego para ESTE niño
         const horaIngreso = new Date();
-        const minutosAAgregar = parseInt(values.tiempoMinutos || '30');
+        const minutosAAgregar = parseInt(values.tiempoMinutos || '30', 10);
         const totalMinutos = minutosAAgregar;
         const horaSalidaEstimada = new Date(horaIngreso.getTime() + totalMinutos * 60000);
         
-        const adultosAdicionales = parseInt(values.adultosExtra || '0');
-        const costoExtraInicial = adultosAdicionales * this.precioAdultoExtra;
-        const costoBase = minutosAAgregar === 60 ? 10 : 7;
+        const adultosAdicionales = parseInt(values.adultosExtra || '0', 10);
+        const costoExtraInicial = adultosAdicionales * Number(this.precioAdultoExtra ?? 2);
+        const costoBase = minutosAAgregar === 60 
+          ? (Number(this.precioBase ?? 7) + Number(this.precioPaqueteExtra ?? 3))
+          : Number(this.precioBase ?? 7);
 
         const { error: sesionError } = await this.supabaseService.db('sesiones_juego')
           .insert({

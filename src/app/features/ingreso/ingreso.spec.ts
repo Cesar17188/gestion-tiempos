@@ -90,6 +90,7 @@ describe('Ingreso', () => {
 
   it('NO debería llamar al servidor al enviar si el formulario es inválido', async () => {
     const insertSpy = vi.spyOn(supabaseMock.db(), 'insert');
+    vi.spyOn(component, 'abrirDialogo').mockResolvedValue(true);
     await component.onSubmit();
     expect(insertSpy).not.toHaveBeenCalled();
   });

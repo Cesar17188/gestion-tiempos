@@ -53,7 +53,7 @@ describe('AdminConfig', () => {
     await component.guardarConfiguracion();
 
     expect(updateSpy).toHaveBeenCalled();
-    expect(component.mensajeFeedback).toBe('Cambios guardados exitosamente');
+    expect(component.mensajeFeedback).toBe('Ajustes del negocio guardados correctamente');
   });
 
   it('debería registrar colaborador y recargar datos', async () => {
