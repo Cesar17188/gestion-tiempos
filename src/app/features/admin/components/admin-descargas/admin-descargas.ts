@@ -86,6 +86,7 @@ export class AdminDescargas implements OnInit {
       nino_notas: [''],
       tutor_nombre: ['', Validators.required],
       tutor_parentesco: [''],
+      tutor_sector: [''],
       tutor_whatsapp: [''],
       tutor_correo: ['']
     });
@@ -158,7 +159,7 @@ export class AdminDescargas implements OnInit {
         .select(`
           id, ingreso_at, salida_estimada_at, estado, costo_base, minutos_extra, costo_extra, adultos_adicionales, tipologia, observaciones_tipologia,
           nino_id,
-          ninos ( id, nombres_apellidos, fecha_nacimiento, notas, tutores ( id, nombres_apellidos, parentesco, whatsapp, correo, cedula ) ),
+          ninos ( id, nombres_apellidos, fecha_nacimiento, notas, tutores ( id, nombres_apellidos, parentesco, whatsapp, correo, cedula, sector ) ),
           perfiles ( nombre )
         `)
         .order('ingreso_at', { ascending: false });
@@ -211,6 +212,7 @@ export class AdminDescargas implements OnInit {
             Adultos_Adicionales: item.adultos_adicionales || 0,
             Tutor_Whatsapp: ultimoTutor?.whatsapp || '',
             Tutor_Correo: ultimoTutor?.correo || '',
+            Tutor_Sector: ultimoTutor?.sector || '',
             Tutor_Cedula: ultimoTutor?.cedula || '',
             Fecha_Ingreso: fechaIngreso,
             Hora_Ingreso: horaIngreso,
@@ -260,6 +262,7 @@ export class AdminDescargas implements OnInit {
       nino_notas: fila.Observaciones || '',
       tutor_nombre: fila.Tutor_Responsable === 'Desconocido' ? '' : fila.Tutor_Responsable,
       tutor_parentesco: fila.Parentesco === 'N/A' ? '' : fila.Parentesco,
+      tutor_sector: fila.Tutor_Sector || '',
       tutor_whatsapp: fila.Tutor_Whatsapp || '',
       tutor_correo: fila.Tutor_Correo || ''
     });
@@ -324,6 +327,7 @@ export class AdminDescargas implements OnInit {
           .update({
             nombres_apellidos: val.tutor_nombre.trim(),
             parentesco: val.tutor_parentesco ? val.tutor_parentesco.trim() : '',
+            sector: val.tutor_sector ? val.tutor_sector.trim() : '',
             whatsapp: val.tutor_whatsapp ? val.tutor_whatsapp.trim() : '',
             correo: val.tutor_correo ? val.tutor_correo.trim() : ''
           })

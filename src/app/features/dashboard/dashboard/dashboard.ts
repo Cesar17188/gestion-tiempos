@@ -30,6 +30,7 @@ export interface SesionJuego {
   parentescoTutor: string;
   whatsapp: string;
   tutorCorreo?: string;
+  tutorSector?: string;
   tutorContactoAdicional?: string;
   horaIngreso: Date;
   horaSalidaEstimada: Date;
@@ -145,6 +146,7 @@ export class Dashboard implements OnInit, OnDestroy {
     tutorCedula: ['', [Validators.required, validarCedulaOPasaporte()]],
     tutorAlias: [''],
     tutorParentesco: ['', [Validators.required]],
+    tutorSector: [''],
     tutorCorreo: ['', [validarCorreo()]],
     tutorContactoAdicional: [''],
     tutorWhatsapp: ['', [Validators.required, validarTelefono()]],
@@ -374,6 +376,7 @@ export class Dashboard implements OnInit, OnDestroy {
             whatsapp,
             parentesco,
             correo,
+            sector,
             contacto_adicional_nombre
           )
         )
@@ -420,6 +423,7 @@ export class Dashboard implements OnInit, OnDestroy {
           parentescoTutor: ultimoTutor?.parentesco || '',
           whatsapp: ultimoTutor?.whatsapp || '',
           tutorCorreo: ultimoTutor?.correo || '',
+          tutorSector: ultimoTutor?.sector || '',
           tutorContactoAdicional: ultimoTutor?.contacto_adicional_nombre || '',
           horaIngreso: new Date(item.ingreso_at),
           horaSalidaEstimada: new Date(item.salida_estimada_at),
@@ -871,6 +875,7 @@ export class Dashboard implements OnInit, OnDestroy {
       tutorNombre: (sesion.nombreTutor && sesion.nombreTutor !== 'Desconocido') ? sesion.nombreTutor : '',
       tutorAlias: sesion.aliasTutor || '',
       tutorParentesco: sesion.parentescoTutor || '',
+      tutorSector: sesion.tutorSector || '',
       tutorWhatsapp: sesion.whatsapp || '',
       tutorCorreo: sesion.tutorCorreo || '',
       tutorContactoAdicional: sesion.tutorContactoAdicional || '',
@@ -914,6 +919,7 @@ export class Dashboard implements OnInit, OnDestroy {
           tutorNombre: tutorData.nombres_apellidos || '',
           tutorAlias: tutorData.alias || '',
           tutorParentesco: tutorData.parentesco || '',
+          tutorSector: tutorData.sector || '',
           tutorCorreo: tutorData.correo || '',
           tutorContactoAdicional: tutorData.contacto_adicional_nombre || '',
           tutorWhatsapp: tutorData.whatsapp || ''
@@ -963,6 +969,13 @@ export class Dashboard implements OnInit, OnDestroy {
     }
   }
 
+  onBlurTutorSector() {
+    const ctrl = this.tutorUpdateForm.get('tutorSector');
+    if (ctrl && ctrl.value) {
+      ctrl.setValue(sanitizarTexto(ctrl.value), { emitEvent: false });
+    }
+  }
+
   obtenerVistaTelefonoTutor(): string {
     const val = this.tutorUpdateForm.get('tutorWhatsapp')?.value;
     return formatearTelefonoParaVista(val);
@@ -987,6 +1000,7 @@ export class Dashboard implements OnInit, OnDestroy {
       const nombreSanitizado = sanitizarTexto(values.tutorNombre);
       const aliasSanitizado = sanitizarTexto(values.tutorAlias);
       const parentescoSanitizado = sanitizarTexto(values.tutorParentesco);
+      const sectorSanitizado = sanitizarTexto(values.tutorSector);
       const contactoAdicionalSanitizado = sanitizarTexto(values.tutorContactoAdicional);
 
       const tutorPayload = {
@@ -994,6 +1008,7 @@ export class Dashboard implements OnInit, OnDestroy {
         cedula: cedulaSanitizada,
         alias: aliasSanitizado,
         parentesco: parentescoSanitizado,
+        sector: sectorSanitizado,
         correo: correoSanitizado,
         contacto_adicional_nombre: contactoAdicionalSanitizado,
         whatsapp: whatsappNormalizado
@@ -1086,6 +1101,7 @@ export class Dashboard implements OnInit, OnDestroy {
           s.nombreTutor = nombreSanitizado;
           s.aliasTutor = aliasSanitizado;
           s.parentescoTutor = parentescoSanitizado;
+          s.tutorSector = sectorSanitizado;
           s.whatsapp = whatsappNormalizado;
           s.tutorCorreo = correoSanitizado;
           s.tutorContactoAdicional = contactoAdicionalSanitizado;
@@ -1103,6 +1119,7 @@ export class Dashboard implements OnInit, OnDestroy {
         this.selectedSesionForUpdate.nombreTutor = nombreSanitizado;
         this.selectedSesionForUpdate.aliasTutor = aliasSanitizado;
         this.selectedSesionForUpdate.parentescoTutor = parentescoSanitizado;
+        this.selectedSesionForUpdate.tutorSector = sectorSanitizado;
         this.selectedSesionForUpdate.whatsapp = whatsappNormalizado;
         this.selectedSesionForUpdate.tutorCorreo = correoSanitizado;
         this.selectedSesionForUpdate.tutorContactoAdicional = contactoAdicionalSanitizado;

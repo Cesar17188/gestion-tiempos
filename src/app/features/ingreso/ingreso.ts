@@ -73,6 +73,7 @@ export class Ingreso implements OnInit {
     tutorCedula: ['', [Validators.required, validarCedulaOPasaporte()]],
     tutorAlias: [''],
     tutorParentesco: ['', [Validators.required]],
+    tutorSector: [''],
     tutorCorreo: ['', [validarCorreo()]],
     tutorContactoAdicional: [''],
     tutorWhatsapp: ['', [Validators.required, validarTelefono()]],
@@ -294,6 +295,13 @@ export class Ingreso implements OnInit {
     }
   }
 
+  onBlurSector() {
+    const ctrl = this.ingresoForm.get('tutorSector');
+    if (ctrl && ctrl.value) {
+      ctrl.setValue(sanitizarTexto(ctrl.value), { emitEvent: false });
+    }
+  }
+
   get ninosFormArray(): FormArray {
     return this.ingresoForm.get('ninos') as FormArray;
   }
@@ -395,6 +403,7 @@ export class Ingreso implements OnInit {
           tutorNombre: tutorData.nombres_apellidos || '',
           tutorAlias: tutorData.alias || '',
           tutorParentesco: tutorData.parentesco || '',
+          tutorSector: tutorData.sector || '',
           tutorCorreo: tutorData.correo || '',
           tutorContactoAdicional: tutorData.contacto_adicional_nombre || '',
           tutorWhatsapp: tutorData.whatsapp || ''
@@ -556,6 +565,7 @@ export class Ingreso implements OnInit {
           tutorCedula: tutorData.cedula || '',
           tutorAlias: tutorData.alias || '',
           tutorParentesco: tutorData.parentesco || '',
+          tutorSector: tutorData.sector || '',
           tutorCorreo: tutorData.correo || '',
           tutorContactoAdicional: tutorData.contacto_adicional_nombre || '',
           tutorWhatsapp: tutorData.whatsapp || ''
@@ -713,6 +723,7 @@ export class Ingreso implements OnInit {
         cedula: cedulaSanitizada,
         alias: sanitizarTexto(values.tutorAlias),
         parentesco: sanitizarTexto(values.tutorParentesco),
+        sector: sanitizarTexto(values.tutorSector),
         correo: correoSanitizado,
         contacto_adicional_nombre: sanitizarTexto(values.tutorContactoAdicional),
         whatsapp: whatsappNormalizado

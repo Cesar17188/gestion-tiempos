@@ -98,6 +98,13 @@
           </div>
 
           <div>
+            <label class="block text-sm font-semibold text-gray-700">Sector donde vive</label>
+            <input type="text" formControlName="tutorSector" (blur)="onBlurSector()"
+                   class="mt-2 block w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                   placeholder="Ej. Cumbayá, Villaflora, La Carolina, etc.">
+          </div>
+
+          <div>
             <label class="block text-sm font-semibold text-gray-700">Correo Electrónico (Opcional)</label>
             <input type="email" formControlName="tutorCorreo" (blur)="onBlurCorreo()"
                    class="mt-2 block w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
