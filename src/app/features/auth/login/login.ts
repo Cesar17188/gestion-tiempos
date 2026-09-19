@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { SupabaseService } from '../../../core/services/supabase/supabase';
+import { estaFueraDeHorario, sanitizarCorreo } from '../../../core/validators/custom-validators';
 
 @Component({
   selector: 'app-login',
@@ -45,7 +46,9 @@ export class Login {
     this.showModal = false;
     this.cdr.detectChanges();
 
-    const { email, password } = this.loginForm.value;
+    const rawEmail = this.loginForm.value.email;
+    const email = sanitizarCorreo(rawEmail);
+    const password = this.loginForm.value.password;
     let timerId: any;
 
     try {
@@ -69,11 +72,25 @@ export class Login {
         this.modalMessage = 'El usuario no fue encontrado en el sistema o las credenciales son incorrectas.';
         this.showModal = true;
       } else {
+        const authUser = response?.data?.user;
+
         // Verificar perfil y restricciones de horario para encargados
-        const { data: perfil, error: perfilError } = await this.supabaseService.db('perfiles')
-          .select('rol, activo, hora_entrada, hora_salida')
-          .eq('email', email)
-          .single();
+        let perfil: any = null;
+        if (authUser?.id) {
+          const { data } = await this.supabaseService.db('perfiles')
+            .select('rol, activo, hora_entrada, hora_salida')
+            .eq('id', authUser.id)
+            .maybeSingle();
+          perfil = data;
+        }
+
+        if (!perfil && email) {
+          const { data } = await this.supabaseService.db('perfiles')
+            .select('rol, activo, hora_entrada, hora_salida')
+            .ilike('email', email)
+            .maybeSingle();
+          perfil = data;
+        }
 
         if (perfil && perfil.rol === 'ENCARGADO') {
           // 1. Verificar si está activo (puede ser false, por defecto asumimos true si es null)
@@ -85,22 +102,9 @@ export class Login {
             return;
           }
 
-          // 2. Verificar horario laboral
+          // 2. Verificar horario laboral con margen de tolerancia (30 min antes y 30 min después)
           if (perfil.hora_entrada && perfil.hora_salida) {
-            const now = new Date();
-            const currentHours = now.getHours().toString().padStart(2, '0');
-            const currentMinutes = now.getMinutes().toString().padStart(2, '0');
-            const currentTime = `${currentHours}:${currentMinutes}`;
-
-            // Si el horario de fin es menor al inicio, significa que cruza la medianoche (ej. 22:00 a 06:00)
-            let fueraDeHorario = false;
-            if (perfil.hora_entrada <= perfil.hora_salida) {
-              // Horario diurno normal
-              fueraDeHorario = (currentTime < perfil.hora_entrada || currentTime > perfil.hora_salida);
-            } else {
-              // Horario nocturno
-              fueraDeHorario = (currentTime < perfil.hora_entrada && currentTime > perfil.hora_salida);
-            }
+            const fueraDeHorario = estaFueraDeHorario(perfil.hora_entrada, perfil.hora_salida, new Date(), 30, 30);
 
             if (fueraDeHorario) {
               await this.supabaseService.auth.signOut();

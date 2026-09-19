@@ -12,7 +12,9 @@ import {
   normalizarTelefono, 
   formatearTelefonoParaVista, 
   sanitizarTexto, 
-  sanitizarCorreo 
+  sanitizarCorreo,
+  estaFueraDeHorario,
+  normalizarHoraStr
 } from '../../../core/validators/custom-validators';
 
 // Interfaz para tipar los datos de la sesión
@@ -267,13 +269,24 @@ export class Dashboard implements OnInit, OnDestroy {
       if (authError) throw authError;
 
       if (user) {
-        const { data: perfil, error: profileError } = await this.supabaseService.supabase
-          .from('perfiles')
-          .select('rol, nombre, avatar_url, hora_entrada, hora_salida')
-          .eq('email', user.email)
-          .single();
+        let perfil: any = null;
+        if (user.id) {
+          const { data } = await this.supabaseService.supabase
+            .from('perfiles')
+            .select('rol, nombre, avatar_url, hora_entrada, hora_salida')
+            .eq('id', user.id)
+            .maybeSingle();
+          perfil = data;
+        }
 
-        if (profileError) throw profileError;
+        if (!perfil && user.email) {
+          const { data } = await this.supabaseService.supabase
+            .from('perfiles')
+            .select('rol, nombre, avatar_url, hora_entrada, hora_salida')
+            .ilike('email', user.email)
+            .maybeSingle();
+          perfil = data;
+        }
 
         if (perfil) {
           const rolUsuario = perfil.rol?.toUpperCase();
@@ -284,9 +297,9 @@ export class Dashboard implements OnInit, OnDestroy {
           } else if (rolUsuario === 'ENCARGADO') {
             this.userGreeting = 'Hola, Anfitriona';
             if (perfil.hora_entrada && perfil.hora_salida) {
-              this.horaEntrada = perfil.hora_entrada;
-              this.horaSalida = perfil.hora_salida;
-              this.horarioTurno = `(${perfil.hora_entrada} - ${perfil.hora_salida})`;
+              this.horaEntrada = normalizarHoraStr(perfil.hora_entrada) || perfil.hora_entrada;
+              this.horaSalida = normalizarHoraStr(perfil.hora_salida) || perfil.hora_salida;
+              this.horarioTurno = `(${this.horaEntrada} - ${this.horaSalida})`;
             }
           } else {
             this.userGreeting = 'Hola, Usuario';
@@ -385,6 +398,10 @@ export class Dashboard implements OnInit, OnDestroy {
 
     if (error) {
       console.error('Error al cargar las sesiones:', error);
+      this.mostrarToast('No se pudieron cargar las sesiones activas. Verifica la conexión o permisos.', 'error');
+      this.isLoading = false;
+      this.haySesionesCargadas = true;
+      this.cdr.detectChanges();
       return;
     }
 
@@ -441,6 +458,8 @@ export class Dashboard implements OnInit, OnDestroy {
         };
       });
 
+      this.isLoading = false;
+      this.haySesionesCargadas = true;
       this.actualizarTiempos(); // Calculamos el tiempo inmediatamente
       this.cdr.detectChanges(); // Informamos a Angular sobre el cambio de sesiones
     }
@@ -495,19 +514,9 @@ export class Dashboard implements OnInit, OnDestroy {
   }
 
   actualizarTiempos() {
-    // 1. Verificación automática de fin de turno para encargados
+    // 1. Verificación automática de fin de turno para encargados (tolerancia de 30 minutos)
     if (this.horaEntrada && this.horaSalida && !this.cerrandoSesion) {
-      const now = new Date();
-      const currentHours = now.getHours().toString().padStart(2, '0');
-      const currentMinutes = now.getMinutes().toString().padStart(2, '0');
-      const currentTime = `${currentHours}:${currentMinutes}`;
-      
-      let fueraDeHorario = false;
-      if (this.horaEntrada <= this.horaSalida) {
-        fueraDeHorario = (currentTime < this.horaEntrada || currentTime > this.horaSalida);
-      } else {
-        fueraDeHorario = (currentTime < this.horaEntrada && currentTime > this.horaSalida);
-      }
+      const fueraDeHorario = estaFueraDeHorario(this.horaEntrada, this.horaSalida, new Date(), 30, 30);
 
       if (fueraDeHorario) {
         this.cerrandoSesion = true;
@@ -1229,16 +1238,31 @@ export class Dashboard implements OnInit, OnDestroy {
 
   // 3. FUNCIÓN PARA VERIFICAR SI EL USUARIO ES ADMINISTRADOR
   async verificarPermisos() {
-    const { data: { user } } = await this.supabaseService.auth.getUser();
-    if (user) {
-      const { data } = await this.supabaseService.db('perfiles')
-        .select('rol')
-        .eq('id', user.id)
-        .single();
+    try {
+      const { data: { user } } = await this.supabaseService.auth.getUser();
+      if (user) {
+        let rol: string | null = null;
+        if (user.id) {
+          const { data } = await this.supabaseService.db('perfiles')
+            .select('rol')
+            .eq('id', user.id)
+            .maybeSingle();
+          rol = data?.rol;
+        }
+        if (!rol && user.email) {
+          const { data } = await this.supabaseService.db('perfiles')
+            .select('rol')
+            .ilike('email', user.email)
+            .maybeSingle();
+          rol = data?.rol;
+        }
 
-      if (data && data.rol === 'ADMINISTRADOR') {
-        this.esAdmin = true;
+        if (rol === 'ADMINISTRADOR') {
+          this.esAdmin = true;
+        }
       }
+    } catch (e) {
+      console.error('Error al verificar permisos:', e);
     }
   }
 }

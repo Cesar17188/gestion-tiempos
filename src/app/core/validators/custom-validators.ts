@@ -179,3 +179,65 @@ export function sanitizarCorreo(raw: string | null | undefined): string {
   if (!raw) return '';
   return String(raw).trim().toLowerCase();
 }
+
+/**
+ * Convierte una hora en formato string ("09:00", "9:00", "09:00:00", "14:30") a minutos totales desde la medianoche (0 - 1439).
+ * Retorna null si el formato es inválido.
+ */
+export function convertirHoraAMinutos(hora: string | null | undefined): number | null {
+  if (!hora) return null;
+  const match = String(hora).trim().match(/^(\d{1,2}):(\d{2})(?::\d{2})?/);
+  if (!match) return null;
+  const horas = parseInt(match[1], 10);
+  const minutos = parseInt(match[2], 10);
+  if (isNaN(horas) || isNaN(minutos) || horas < 0 || horas > 23 || minutos < 0 || minutos > 59) {
+    return null;
+  }
+  return horas * 60 + minutos;
+}
+
+/**
+ * Normaliza una hora a formato estándar "HH:mm".
+ */
+export function normalizarHoraStr(hora: string | null | undefined): string {
+  const minutosTotales = convertirHoraAMinutos(hora);
+  if (minutosTotales === null) return '';
+  const h = Math.floor(minutosTotales / 60).toString().padStart(2, '0');
+  const m = (minutosTotales % 60).toString().padStart(2, '0');
+  return `${h}:${m}`;
+}
+
+/**
+ * Verifica si la hora actual está fuera del horario de turno laboral aplicando márgenes de tolerancia.
+ * Por defecto permite ingresar 30 minutos antes del inicio y permanecer hasta 30 minutos después del fin.
+ */
+export function estaFueraDeHorario(
+  horaEntradaStr: string | null | undefined,
+  horaSalidaStr: string | null | undefined,
+  fechaReferencia: Date = new Date(),
+  margenMinutosAntes: number = 30,
+  margenMinutosDespues: number = 30
+): boolean {
+  const entradaMin = convertirHoraAMinutos(horaEntradaStr);
+  const salidaMin = convertirHoraAMinutos(horaSalidaStr);
+
+  // Si no están configurados ambos horarios válidos, no restringimos el acceso
+  if (entradaMin === null || salidaMin === null) {
+    return false;
+  }
+
+  const actualMin = fechaReferencia.getHours() * 60 + fechaReferencia.getMinutes();
+
+  if (entradaMin <= salidaMin) {
+    // Turno diurno normal (ej. 09:00 a 18:00)
+    const inicioPermitido = Math.max(0, entradaMin - margenMinutosAntes);
+    const finPermitido = Math.min(1439, salidaMin + margenMinutosDespues);
+    return actualMin < inicioPermitido || actualMin > finPermitido;
+  } else {
+    // Turno que cruza la medianoche (ej. 20:00 a 04:00)
+    const inicioPermitido = (entradaMin - margenMinutosAntes + 1440) % 1440;
+    const finPermitido = (salidaMin + margenMinutosDespues) % 1440;
+    return actualMin < inicioPermitido && actualMin > finPermitido;
+  }
+}
+

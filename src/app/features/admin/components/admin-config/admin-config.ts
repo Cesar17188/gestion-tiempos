@@ -4,6 +4,7 @@ import { ReactiveFormsModule, FormsModule, FormBuilder, FormGroup, Validators } 
 import { createClient } from '@supabase/supabase-js';
 import { SupabaseService } from '../../../../core/services/supabase/supabase';
 import { environment } from '../../../../../environments/environment';
+import { normalizarHoraStr } from '../../../../core/validators/custom-validators';
 
 @Component({
   selector: 'app-admin-config',
@@ -451,10 +452,13 @@ export class AdminConfig implements OnInit {
     this.cdr.detectChanges();
 
     try {
+      const horaEntradaNorm = normalizarHoraStr(perfil.hora_entrada) || perfil.hora_entrada;
+      const horaSalidaNorm = normalizarHoraStr(perfil.hora_salida) || perfil.hora_salida;
+
       const updatePromise = this.supabase.from('perfiles')
         .update({
-          hora_entrada: perfil.hora_entrada,
-          hora_salida: perfil.hora_salida,
+          hora_entrada: horaEntradaNorm,
+          hora_salida: horaSalidaNorm,
           activo: perfil.activo
         })
         .eq('id', perfil.id);
@@ -464,6 +468,8 @@ export class AdminConfig implements OnInit {
       if (error) {
         await this.abrirDialogo('Error', 'Error al actualizar el personal: ' + error.message, 'Entendido');
       } else {
+        perfil.hora_entrada = horaEntradaNorm;
+        perfil.hora_salida = horaSalidaNorm;
         this.mostrarFeedback('Cambios del colaborador guardados correctamente');
       }
     } catch (err: any) {

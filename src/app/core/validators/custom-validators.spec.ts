@@ -8,7 +8,10 @@ import {
   normalizarTelefono, 
   formatearTelefonoParaVista, 
   sanitizarTexto, 
-  sanitizarCorreo 
+  sanitizarCorreo,
+  convertirHoraAMinutos,
+  normalizarHoraStr,
+  estaFueraDeHorario
 } from './custom-validators';
 
 describe('Custom Validators', () => {
@@ -114,4 +117,45 @@ describe('Custom Validators', () => {
     });
   });
 
+  describe('convertirHoraAMinutos, normalizarHoraStr y estaFueraDeHorario', () => {
+    it('debería convertir horas a minutos correctamente', () => {
+      expect(convertirHoraAMinutos('09:00')).toBe(540);
+      expect(convertirHoraAMinutos('9:00')).toBe(540);
+      expect(convertirHoraAMinutos('09:00:00')).toBe(540);
+      expect(convertirHoraAMinutos('14:30:45')).toBe(870);
+      expect(convertirHoraAMinutos('invalid')).toBeNull();
+      expect(convertirHoraAMinutos(null)).toBeNull();
+    });
+
+    it('debería normalizar string de hora a HH:mm', () => {
+      expect(normalizarHoraStr('9:00')).toBe('09:00');
+      expect(normalizarHoraStr('09:00:00')).toBe('09:00');
+      expect(normalizarHoraStr('14:30')).toBe('14:30');
+      expect(normalizarHoraStr('')).toBe('');
+    });
+
+    it('debería evaluar correctamente si está dentro o fuera de horario diurno', () => {
+      // Turno: 09:00 a 18:00
+      // 09:00 = 540 min. Con margen 30 min antes: inicio permitido 08:30 (510 min)
+      // 18:00 = 1080 min. Con margen 30 min despues: fin permitido 18:30 (1110 min)
+      const fecha820 = new Date(2026, 0, 1, 8, 20); // 08:20 (fuera)
+      const fecha835 = new Date(2026, 0, 1, 8, 35); // 08:35 (dentro por margen)
+      const fecha1200 = new Date(2026, 0, 1, 12, 0); // 12:00 (dentro)
+      const fecha1825 = new Date(2026, 0, 1, 18, 25); // 18:25 (dentro por margen)
+      const fecha1845 = new Date(2026, 0, 1, 18, 45); // 18:45 (fuera)
+
+      expect(estaFueraDeHorario('09:00:00', '18:00:00', fecha820, 30, 30)).toBe(true);
+      expect(estaFueraDeHorario('9:00', '18:00', fecha835, 30, 30)).toBe(false);
+      expect(estaFueraDeHorario('09:00', '18:00', fecha1200, 30, 30)).toBe(false);
+      expect(estaFueraDeHorario('09:00', '18:00', fecha1825, 30, 30)).toBe(false);
+      expect(estaFueraDeHorario('09:00', '18:00', fecha1845, 30, 30)).toBe(true);
+    });
+
+    it('debería permitir acceso si no hay horarios configurados', () => {
+      expect(estaFueraDeHorario(null, null)).toBe(false);
+      expect(estaFueraDeHorario('', '')).toBe(false);
+    });
+  });
+
 });
+
