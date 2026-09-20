@@ -45,7 +45,7 @@ export class AdminDescargas implements OnInit {
   // Columnas que se mostrarán en la vista previa y en el Excel final para Sesiones
   columnasExcel = [
     'ID_Sesion', 'Fecha_Ingreso', 'Hora_Ingreso', 'Dia_Semana', 'Hora_Salida_Estimada', 'Estado_Sesion',
-    'Nino', 'Edad_Nino', 'Tutor_Responsable', 'Parentesco', 'Observaciones', 
+    'Nino', 'Edad_Nino', 'Tutor_Responsable', 'Parentesco', 'Tipo_Pase', 'Observaciones_Tipo_Pase', 'Observaciones', 
     'Costo_Base', 'Minutos_Extra', 'Costo_Extra', 'Total_Pagado',
     'Registrado_Por', 'Tipologia', 'Observaciones_Tipologia', 'Requiere_Factura', 'Identificacion', 'Razon_Social',
     'Email_Factura', 'Estado_Factura', 'Clave_Acceso_SRI'
@@ -54,7 +54,7 @@ export class AdminDescargas implements OnInit {
   // Columnas para el directorio de Niños Únicos (Clientes)
   columnasClientesExcel = [
     'Nino', 'Nombre_Preferido', 'Edad', 'Fecha_Nacimiento', 'Observaciones',
-    'Tutores_Responsables', 'Telefonos_WhatsApp', 'Correos_Electronicos', 'Cedulas_Tutores',
+    'Tutores_Responsables', 'Tipos_Pase_Tutores', 'Observaciones_Tipo_Pase', 'Telefonos_WhatsApp', 'Correos_Electronicos', 'Cedulas_Tutores',
     'Total_Visitas', 'Total_Gastado', 'Ultima_Visita', 'Primera_Visita'
   ];
 
@@ -88,7 +88,9 @@ export class AdminDescargas implements OnInit {
       tutor_parentesco: [''],
       tutor_sector: [''],
       tutor_whatsapp: [''],
-      tutor_correo: ['']
+      tutor_correo: [''],
+      tutor_tipo_pase: [''],
+      tutor_observaciones_tipo_pase: ['']
     });
   }
 
@@ -116,6 +118,8 @@ export class AdminDescargas implements OnInit {
     return this.baseCompletaAplanada.filter(f =>
       (f.Nino && f.Nino.toLowerCase().includes(q)) ||
       (f.Tutor_Responsable && f.Tutor_Responsable.toLowerCase().includes(q)) ||
+      (f.Tipo_Pase && f.Tipo_Pase.toLowerCase().includes(q)) ||
+      (f.Observaciones_Tipo_Pase && f.Observaciones_Tipo_Pase.toLowerCase().includes(q)) ||
       (f.Identificacion && f.Identificacion.toLowerCase().includes(q)) ||
       (f.Razon_Social && f.Razon_Social.toLowerCase().includes(q)) ||
       (f.Tipologia && f.Tipologia.toLowerCase().includes(q)) ||
@@ -132,6 +136,8 @@ export class AdminDescargas implements OnInit {
       (c.Nino && c.Nino.toLowerCase().includes(q)) ||
       (c.Nombre_Preferido && c.Nombre_Preferido.toLowerCase().includes(q)) ||
       (c.Tutores_Responsables && c.Tutores_Responsables.toLowerCase().includes(q)) ||
+      (c.Tipos_Pase_Tutores && c.Tipos_Pase_Tutores.toLowerCase().includes(q)) ||
+      (c.Observaciones_Tipo_Pase && c.Observaciones_Tipo_Pase.toLowerCase().includes(q)) ||
       (c.Telefonos_WhatsApp && c.Telefonos_WhatsApp.toLowerCase().includes(q)) ||
       (c.Correos_Electronicos && c.Correos_Electronicos.toLowerCase().includes(q)) ||
       (c.Observaciones && c.Observaciones.toLowerCase().includes(q)) ||
@@ -159,7 +165,7 @@ export class AdminDescargas implements OnInit {
         .select(`
           id, ingreso_at, salida_estimada_at, estado, costo_base, minutos_extra, costo_extra, adultos_adicionales, tipologia, observaciones_tipologia,
           nino_id,
-          ninos ( id, nombres_apellidos, fecha_nacimiento, notas, tutores ( id, nombres_apellidos, parentesco, whatsapp, correo, cedula, sector ) ),
+          ninos ( id, nombres_apellidos, fecha_nacimiento, notas, tutores ( id, nombres_apellidos, parentesco, whatsapp, correo, cedula, sector, tipo_pase, observaciones_tipo_pase ) ),
           perfiles ( nombre )
         `)
         .order('ingreso_at', { ascending: false });
@@ -214,6 +220,10 @@ export class AdminDescargas implements OnInit {
             Tutor_Correo: ultimoTutor?.correo || '',
             Tutor_Sector: ultimoTutor?.sector || '',
             Tutor_Cedula: ultimoTutor?.cedula || '',
+            Tutor_Tipo_Pase: ultimoTutor?.tipo_pase || '',
+            Tutor_Observaciones_Tipo_Pase: ultimoTutor?.observaciones_tipo_pase || '',
+            Tipo_Pase: ultimoTutor?.tipo_pase || '-',
+            Observaciones_Tipo_Pase: ultimoTutor?.observaciones_tipo_pase || '-',
             Fecha_Ingreso: fechaIngreso,
             Hora_Ingreso: horaIngreso,
             Dia_Semana: diaSemana,
@@ -264,7 +274,9 @@ export class AdminDescargas implements OnInit {
       tutor_parentesco: fila.Parentesco === 'N/A' ? '' : fila.Parentesco,
       tutor_sector: fila.Tutor_Sector || '',
       tutor_whatsapp: fila.Tutor_Whatsapp || '',
-      tutor_correo: fila.Tutor_Correo || ''
+      tutor_correo: fila.Tutor_Correo || '',
+      tutor_tipo_pase: fila.Tutor_Tipo_Pase || (fila.Tipo_Pase === '-' ? '' : fila.Tipo_Pase) || '',
+      tutor_observaciones_tipo_pase: fila.Tutor_Observaciones_Tipo_Pase || (fila.Observaciones_Tipo_Pase === '-' ? '' : fila.Observaciones_Tipo_Pase) || ''
     });
     this.showEditModal = true;
     this.cdr.detectChanges();
@@ -329,7 +341,9 @@ export class AdminDescargas implements OnInit {
             parentesco: val.tutor_parentesco ? val.tutor_parentesco.trim() : '',
             sector: val.tutor_sector ? val.tutor_sector.trim() : '',
             whatsapp: val.tutor_whatsapp ? val.tutor_whatsapp.trim() : '',
-            correo: val.tutor_correo ? val.tutor_correo.trim() : ''
+            correo: val.tutor_correo ? val.tutor_correo.trim() : '',
+            tipo_pase: val.tutor_tipo_pase ? val.tutor_tipo_pase.trim() : null,
+            observaciones_tipo_pase: val.tutor_observaciones_tipo_pase ? val.tutor_observaciones_tipo_pase.trim() : null
           })
           .eq('id', tutorId);
       }
@@ -522,6 +536,16 @@ export class AdminDescargas implements OnInit {
             tutoresArray.map((t: any) => (t.cedula || '').trim()).filter(Boolean)
           )].join(', ');
 
+          // Tipos de pase únicos de los adultos
+          const tiposPaseTutores = [...new Set(
+            tutoresArray.map((t: any) => (t.tipo_pase || '').trim()).filter(Boolean)
+          )].join(', ');
+
+          // Observaciones de tipo de pase de los adultos
+          const obsPaseTutores = [...new Set(
+            tutoresArray.map((t: any) => (t.observaciones_tipo_pase || '').trim()).filter(Boolean)
+          )].join('; ');
+
           // Cálculo de edad del niño
           let edad = 'N/A';
           if (n.fecha_nacimiento) {
@@ -545,6 +569,8 @@ export class AdminDescargas implements OnInit {
             Fecha_Nacimiento: n.fecha_nacimiento ? new Date(n.fecha_nacimiento).toLocaleDateString() : 'N/A',
             Observaciones: n.notas || '-',
             Tutores_Responsables: nombresTutores || 'Sin tutor asignado',
+            Tipos_Pase_Tutores: tiposPaseTutores || 'Sin registrar',
+            Observaciones_Tipo_Pase: obsPaseTutores || '-',
             Telefonos_WhatsApp: telefonosTutores || 'Sin teléfono',
             Correos_Electronicos: correosTutores || 'Sin correo',
             Cedulas_Tutores: cedulasTutores || 'S/N',

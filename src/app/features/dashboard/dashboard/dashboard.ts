@@ -34,6 +34,8 @@ export interface SesionJuego {
   tutorCorreo?: string;
   tutorSector?: string;
   tutorContactoAdicional?: string;
+  tutorTipoPase?: string;
+  tutorObservacionesTipoPase?: string;
   horaIngreso: Date;
   horaSalidaEstimada: Date;
   minutosRestantes: number;
@@ -152,6 +154,8 @@ export class Dashboard implements OnInit, OnDestroy {
     tutorCorreo: ['', [validarCorreo()]],
     tutorContactoAdicional: [''],
     tutorWhatsapp: ['', [Validators.required, validarTelefono()]],
+    tutorTipoPase: [''],
+    tutorObservacionesTipoPase: [''],
     adultosExtra: [0, [Validators.min(0)]]
   });
 
@@ -390,7 +394,9 @@ export class Dashboard implements OnInit, OnDestroy {
             parentesco,
             correo,
             sector,
-            contacto_adicional_nombre
+            contacto_adicional_nombre,
+            tipo_pase,
+            observaciones_tipo_pase
           )
         )
       `)
@@ -442,6 +448,8 @@ export class Dashboard implements OnInit, OnDestroy {
           tutorCorreo: ultimoTutor?.correo || '',
           tutorSector: ultimoTutor?.sector || '',
           tutorContactoAdicional: ultimoTutor?.contacto_adicional_nombre || '',
+          tutorTipoPase: ultimoTutor?.tipo_pase || '',
+          tutorObservacionesTipoPase: ultimoTutor?.observaciones_tipo_pase || '',
           horaIngreso: new Date(item.ingreso_at),
           horaSalidaEstimada: new Date(item.salida_estimada_at),
           minutosRestantes: 0,
@@ -889,6 +897,8 @@ export class Dashboard implements OnInit, OnDestroy {
       tutorWhatsapp: sesion.whatsapp || '',
       tutorCorreo: sesion.tutorCorreo || '',
       tutorContactoAdicional: sesion.tutorContactoAdicional || '',
+      tutorTipoPase: sesion.tutorTipoPase || '',
+      tutorObservacionesTipoPase: sesion.tutorObservacionesTipoPase || '',
       adultosExtra: sesion.adultosAdicionales || 0
     });
     this.showUpdateTutorDialog = true;
@@ -932,7 +942,9 @@ export class Dashboard implements OnInit, OnDestroy {
           tutorSector: tutorData.sector || '',
           tutorCorreo: tutorData.correo || '',
           tutorContactoAdicional: tutorData.contacto_adicional_nombre || '',
-          tutorWhatsapp: tutorData.whatsapp || ''
+          tutorWhatsapp: tutorData.whatsapp || '',
+          tutorTipoPase: tutorData.tipo_pase || '',
+          tutorObservacionesTipoPase: tutorData.observaciones_tipo_pase || ''
         });
         this.searchTutorMessage = 'Datos del responsable cargados exitosamente.';
       } else {
@@ -1021,7 +1033,9 @@ export class Dashboard implements OnInit, OnDestroy {
         sector: sectorSanitizado,
         correo: correoSanitizado,
         contacto_adicional_nombre: contactoAdicionalSanitizado,
-        whatsapp: whatsappNormalizado
+        whatsapp: whatsappNormalizado,
+        tipo_pase: sanitizarTexto(values.tutorTipoPase) || null,
+        observaciones_tipo_pase: sanitizarTexto(values.tutorObservacionesTipoPase) || null
       };
 
       // 1. Buscar si el tutor ya existe por cédula o usar el tutorId actual
@@ -1115,6 +1129,8 @@ export class Dashboard implements OnInit, OnDestroy {
           s.whatsapp = whatsappNormalizado;
           s.tutorCorreo = correoSanitizado;
           s.tutorContactoAdicional = contactoAdicionalSanitizado;
+          s.tutorTipoPase = sanitizarTexto(values.tutorTipoPase) || '';
+          s.tutorObservacionesTipoPase = sanitizarTexto(values.tutorObservacionesTipoPase) || '';
         }
         if (s.id === sesionId) {
           s.adultosAdicionales = nuevosAdultosExtra;
@@ -1133,6 +1149,8 @@ export class Dashboard implements OnInit, OnDestroy {
         this.selectedSesionForUpdate.whatsapp = whatsappNormalizado;
         this.selectedSesionForUpdate.tutorCorreo = correoSanitizado;
         this.selectedSesionForUpdate.tutorContactoAdicional = contactoAdicionalSanitizado;
+        this.selectedSesionForUpdate.tutorTipoPase = sanitizarTexto(values.tutorTipoPase) || '';
+        this.selectedSesionForUpdate.tutorObservacionesTipoPase = sanitizarTexto(values.tutorObservacionesTipoPase) || '';
         if (this.selectedSesionForUpdate.id === sesionId) {
           this.selectedSesionForUpdate.adultosAdicionales = nuevosAdultosExtra;
           this.selectedSesionForUpdate.costoExtra = nuevoCostoExtra;

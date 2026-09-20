@@ -77,6 +77,8 @@ export class Ingreso implements OnInit {
     tutorCorreo: ['', [validarCorreo()]],
     tutorContactoAdicional: [''],
     tutorWhatsapp: ['', [Validators.required, validarTelefono()]],
+    tutorTipoPase: [''],
+    tutorObservacionesTipoPase: [''],
 
     // FormArray para los Niños
     ninos: this.fb.array([this.crearNinoFormGroup()]),
@@ -406,7 +408,9 @@ export class Ingreso implements OnInit {
           tutorSector: tutorData.sector || '',
           tutorCorreo: tutorData.correo || '',
           tutorContactoAdicional: tutorData.contacto_adicional_nombre || '',
-          tutorWhatsapp: tutorData.whatsapp || ''
+          tutorWhatsapp: tutorData.whatsapp || '',
+          tutorTipoPase: tutorData.tipo_pase || '',
+          tutorObservacionesTipoPase: tutorData.observaciones_tipo_pase || ''
         });
 
         // 2. Buscar todos los niños asociados al tutor
@@ -568,7 +572,9 @@ export class Ingreso implements OnInit {
           tutorSector: tutorData.sector || '',
           tutorCorreo: tutorData.correo || '',
           tutorContactoAdicional: tutorData.contacto_adicional_nombre || '',
-          tutorWhatsapp: tutorData.whatsapp || ''
+          tutorWhatsapp: tutorData.whatsapp || '',
+          tutorTipoPase: tutorData.tipo_pase || '',
+          tutorObservacionesTipoPase: tutorData.observaciones_tipo_pase || ''
         });
 
         // Buscar todos los niños asociados al tutor
@@ -726,7 +732,9 @@ export class Ingreso implements OnInit {
         sector: sanitizarTexto(values.tutorSector),
         correo: correoSanitizado,
         contacto_adicional_nombre: sanitizarTexto(values.tutorContactoAdicional),
-        whatsapp: whatsappNormalizado
+        whatsapp: whatsappNormalizado,
+        tipo_pase: sanitizarTexto(values.tutorTipoPase) || null,
+        observaciones_tipo_pase: sanitizarTexto(values.tutorObservacionesTipoPase) || null
       };
 
       if (existingTutor) {
