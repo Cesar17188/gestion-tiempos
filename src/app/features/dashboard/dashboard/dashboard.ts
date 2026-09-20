@@ -362,7 +362,7 @@ export class Dashboard implements OnInit, OnDestroy {
   // 1. CONSULTA REAL A LA BASE DE DATOS
   async cargarSesionesActivas() {
     const hace3Minutos = new Date(Date.now() - 180000).toISOString();
-    // Traemos sesiones activas, sesiones finalizadas recientes (últimos 3 min), Y todas las sesiones finalizadas que aún NO tengan tipología u observaciones registradas
+    // Traemos únicamente sesiones activas o sesiones finalizadas recientemente (últimos 3 minutos)
     const { data, error } = await this.supabaseService.db('sesiones_juego')
       .select(`
         id,
@@ -394,7 +394,7 @@ export class Dashboard implements OnInit, OnDestroy {
           )
         )
       `)
-      .or(`estado.eq.ACTIVO,tipologia.is.null,tipologia.eq.,observaciones_tipologia.is.null,observaciones_tipologia.eq.,and(estado.eq.FINALIZADO,salida_estimada_at.gte.${hace3Minutos})`);
+      .or(`estado.eq.ACTIVO,and(estado.eq.FINALIZADO,salida_estimada_at.gte.${hace3Minutos})`);
 
     if (error) {
       console.error('Error al cargar las sesiones:', error);
@@ -771,7 +771,8 @@ export class Dashboard implements OnInit, OnDestroy {
 
       const { error } = await this.supabaseService.db('sesiones_juego')
         .update({
-          salida_estimada_at: nuevaSalidaEstimada.toISOString()
+          salida_estimada_at: nuevaSalidaEstimada.toISOString(),
+          estado: 'FINALIZADO'
         })
         .eq('id', sesion.id);
 
