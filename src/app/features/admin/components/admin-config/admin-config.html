@@ -201,7 +201,12 @@
                                 {{ perfil.nombre ? perfil.nombre.charAt(0) : 'U' }}
                             </div>
                             <div>
-                                <p class="text-sm font-bold text-gray-800">{{ perfil.nombre }}</p>
+                                <div class="flex items-center gap-1.5">
+                                    <p class="text-sm font-bold text-gray-800">{{ perfil.nombre }}</p>
+                                    @if (perfil.id === currentUserId) {
+                                    <span class="text-[10px] bg-amber-50 text-amber-700 font-semibold px-1.5 py-0.5 rounded border border-amber-200">Tú</span>
+                                    }
+                                </div>
                                 <p class="text-xxs text-gray-500 font-medium">{{ perfil.email || ('ID: ' + perfil.id) }}</p>
                             </div>
                         </div>
@@ -223,16 +228,39 @@
                                     <span>Enviar Acceso</span>
                                 }
                             </button>
-                            <span
-                                [ngClass]="{'bg-purple-50 text-purple-600 border-purple-100': perfil.rol === 'ADMINISTRADOR', 'bg-blue-50 text-blue-600 border-blue-100': perfil.rol === 'ENCARGADO'}"
-                                class="text-xxs font-bold px-2.5 py-1 rounded-lg border uppercase tracking-wider">
-                                {{ perfil.rol === 'ENCARGADO' ? 'ANFITRIONA' : perfil.rol }}
-                            </span>
+                            <!-- Selector Rápido de Rol -->
+                            <div class="relative">
+                                <select [value]="perfil.rol"
+                                    (change)="cambiarRolUsuario(perfil, $event)"
+                                    [disabled]="personalGuardandoId === perfil.id"
+                                    [ngClass]="{
+                                        'bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100 focus:ring-purple-400': perfil.rol === 'ADMINISTRADOR',
+                                        'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100 focus:ring-blue-400': perfil.rol === 'ENCARGADO'
+                                    }"
+                                    class="text-xxs font-bold pl-2.5 pr-6 py-1 rounded-lg border uppercase tracking-wider cursor-pointer outline-none transition-all appearance-none"
+                                    title="Haz clic para cambiar el rol">
+                                    <option value="ENCARGADO" class="bg-white text-gray-800 normal-case font-medium">Anfitriona</option>
+                                    <option value="ADMINISTRADOR" class="bg-white text-gray-800 normal-case font-medium">Administrador</option>
+                                </select>
+                                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-1.5"
+                                    [ngClass]="{'text-purple-600': perfil.rol === 'ADMINISTRADOR', 'text-blue-600': perfil.rol === 'ENCARGADO'}">
+                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                    </svg>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
-                    @if (perfil.rol === 'ENCARGADO') {
-                    <div class="mt-3 bg-gray-50 p-3 rounded-lg flex flex-col md:flex-row gap-3 items-end">
+                    <!-- Panel de Ajustes del Colaborador -->
+                    <div class="mt-3 bg-gray-50 p-3 rounded-xl border border-gray-100 flex flex-col md:flex-row gap-3 items-end">
+                        <div class="w-full md:w-auto flex-1">
+                            <label class="block text-xxs font-bold text-gray-500 uppercase mb-1">Rol</label>
+                            <select [(ngModel)]="perfil.rol" class="w-full text-xs border border-gray-200 rounded-lg p-1.5 bg-white focus:ring-2 focus:ring-indigo-500 focus:outline-none font-medium">
+                                <option value="ENCARGADO">Anfitriona</option>
+                                <option value="ADMINISTRADOR">Administrador</option>
+                            </select>
+                        </div>
                         <div class="w-full md:w-auto flex-1">
                             <label class="block text-xxs font-bold text-gray-500 uppercase mb-1">Estado</label>
                             <select [(ngModel)]="perfil.activo" class="w-full text-xs border border-gray-200 rounded-lg p-1.5 bg-white focus:ring-2 focus:ring-indigo-500 focus:outline-none">
@@ -241,6 +269,7 @@
                                 <option [ngValue]="null">Activo</option>
                             </select>
                         </div>
+                        @if (perfil.rol === 'ENCARGADO') {
                         <div class="w-full md:w-auto flex-1">
                             <label class="block text-xxs font-bold text-gray-500 uppercase mb-1">Hora Inicio</label>
                             <input type="time" [(ngModel)]="perfil.hora_entrada" class="w-full text-xs border border-gray-200 rounded-lg p-1.5 bg-white focus:ring-2 focus:ring-indigo-500 focus:outline-none">
@@ -249,6 +278,14 @@
                             <label class="block text-xxs font-bold text-gray-500 uppercase mb-1">Hora Fin</label>
                             <input type="time" [(ngModel)]="perfil.hora_salida" class="w-full text-xs border border-gray-200 rounded-lg p-1.5 bg-white focus:ring-2 focus:ring-indigo-500 focus:outline-none">
                         </div>
+                        } @else {
+                        <div class="w-full md:w-auto flex-2 py-2 px-3 bg-purple-50/60 border border-purple-100 rounded-lg text-xxs text-purple-700 flex items-center gap-1.5">
+                            <svg class="w-4 h-4 text-purple-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+                            </svg>
+                            <span>Acceso total sin restricción de horario</span>
+                        </div>
+                        }
                         <button (click)="actualizarPersonal(perfil)" [disabled]="personalGuardandoId === perfil.id"
                             class="w-full md:w-auto px-4 py-2 bg-indigo-50 text-indigo-700 text-xs font-bold rounded-lg hover:bg-indigo-100 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-1.5 cursor-pointer">
                             @if (personalGuardandoId === perfil.id) {
@@ -262,7 +299,6 @@
                             }
                         </button>
                     </div>
-                    }
                 </div>
                 }
             </div>

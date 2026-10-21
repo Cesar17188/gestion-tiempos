@@ -74,4 +74,35 @@ describe('AdminConfig', () => {
     expect(component.personalForm.get('nombre')?.value).toBeNull(); // El form se reseteó
     expect(cargarDatosSpy).toHaveBeenCalled();
   });
+
+  it('debería actualizar el personal con el nuevo rol correctamente', async () => {
+    const updateSpy = vi.spyOn(supabaseMock.db(), 'update');
+    const perfil = { id: 'user-1', nombre: 'Carla', rol: 'ENCARGADO', activo: true, hora_entrada: '09:00', hora_salida: '18:00' };
+    
+    perfil.rol = 'ADMINISTRADOR';
+    await component.actualizarPersonal(perfil);
+
+    expect(updateSpy).toHaveBeenCalledWith(expect.objectContaining({
+      rol: 'ADMINISTRADOR',
+      activo: true
+    }));
+    expect(component.mensajeFeedback).toContain('Carla');
+  });
+
+  it('debería cambiar el rol del usuario directamente al confirmar el diálogo', async () => {
+    const updateSpy = vi.spyOn(supabaseMock.db(), 'update');
+    vi.spyOn(component, 'abrirDialogo').mockResolvedValue(true);
+    
+    const perfil = { id: 'user-2', nombre: 'Sofía', rol: 'ENCARGADO', activo: true };
+    const mockSelect = { value: 'ADMINISTRADOR' } as HTMLSelectElement;
+    const mockEvent = { target: mockSelect } as unknown as Event;
+
+    await component.cambiarRolUsuario(perfil, mockEvent);
+
+    expect(component.abrirDialogo).toHaveBeenCalled();
+    expect(updateSpy).toHaveBeenCalledWith(expect.objectContaining({
+      rol: 'ADMINISTRADOR'
+    }));
+    expect(perfil.rol).toBe('ADMINISTRADOR');
+  });
 });

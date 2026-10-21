@@ -36,6 +36,7 @@ export class AdminConfig implements OnInit {
   configForm!: FormGroup;
   personalForm!: FormGroup;
   listaPersonal: any[] = [];
+  currentUserId: string | null = null;
 
   private configId: any = 1;
   private columnasDisponibles = new Set<string>();
@@ -83,6 +84,14 @@ export class AdminConfig implements OnInit {
     this.cdr.detectChanges();
 
     try {
+      // Obtenemos el usuario autenticado para saber si se está editando a sí mismo
+      try {
+        const { data: authData } = await this.supabase.auth.getUser();
+        this.currentUserId = authData?.user?.id ?? null;
+      } catch (e) {
+        console.warn('No se pudo obtener el usuario autenticado:', e);
+      }
+
       // Cargamos en paralelo de forma resiliente
       const [configResult, personalResult] = await Promise.allSettled([
         this.ejecutarConTimeout(
@@ -448,6 +457,23 @@ export class AdminConfig implements OnInit {
 
   async actualizarPersonal(perfil: any) {
     if (this.personalGuardandoId) return;
+
+    // Validación si el usuario se está cambiando el rol a sí mismo a ENCARGADO
+    if (perfil.id === this.currentUserId && perfil.rol === 'ENCARGADO') {
+      const confirmacion = await this.abrirDialogo(
+        '¿Cambiar tu propio rol?',
+        '¡Atención! Estás a punto de guardar tu cuenta con el rol de Anfitriona. Si continúas, perderás el acceso al panel de administración de inmediato.\n\n¿Estás seguro de que deseas continuar?',
+        'Sí, guardar cambios',
+        'Cancelar'
+      );
+
+      if (!confirmacion) {
+        perfil.rol = 'ADMINISTRADOR';
+        this.cdr.detectChanges();
+        return;
+      }
+    }
+
     this.personalGuardandoId = perfil.id;
     this.cdr.detectChanges();
 
@@ -455,12 +481,18 @@ export class AdminConfig implements OnInit {
       const horaEntradaNorm = normalizarHoraStr(perfil.hora_entrada) || perfil.hora_entrada;
       const horaSalidaNorm = normalizarHoraStr(perfil.hora_salida) || perfil.hora_salida;
 
+      const updateData: Record<string, any> = {
+        rol: perfil.rol,
+        activo: perfil.activo ?? true
+      };
+
+      if (perfil.rol === 'ENCARGADO') {
+        updateData['hora_entrada'] = horaEntradaNorm || '09:00';
+        updateData['hora_salida'] = horaSalidaNorm || '20:00';
+      }
+
       const updatePromise = this.supabase.from('perfiles')
-        .update({
-          hora_entrada: horaEntradaNorm,
-          hora_salida: horaSalidaNorm,
-          activo: perfil.activo
-        })
+        .update(updateData)
         .eq('id', perfil.id);
 
       const { error } = await this.ejecutarConTimeout(updatePromise as any, 7000) as any;
@@ -468,13 +500,90 @@ export class AdminConfig implements OnInit {
       if (error) {
         await this.abrirDialogo('Error', 'Error al actualizar el personal: ' + error.message, 'Entendido');
       } else {
-        perfil.hora_entrada = horaEntradaNorm;
-        perfil.hora_salida = horaSalidaNorm;
-        this.mostrarFeedback('Cambios del colaborador guardados correctamente');
+        if (perfil.rol === 'ENCARGADO') {
+          perfil.hora_entrada = horaEntradaNorm || '09:00';
+          perfil.hora_salida = horaSalidaNorm || '20:00';
+        }
+        const rolTexto = perfil.rol === 'ADMINISTRADOR' ? 'Administrador' : 'Anfitriona';
+        this.mostrarFeedback(`Cambios guardados: ${perfil.nombre} (${rolTexto})`);
       }
     } catch (err: any) {
       console.error('Error inesperado al actualizar personal:', err);
       await this.abrirDialogo('Error', 'Error al actualizar: ' + (err?.message || err), 'Entendido');
+    } finally {
+      this.personalGuardandoId = null;
+      this.cdr.detectChanges();
+    }
+  }
+
+  async cambiarRolUsuario(perfil: any, event: Event) {
+    const selectEl = event.target as HTMLSelectElement;
+    const nuevoRol = selectEl.value;
+    const rolAnterior = perfil.rol;
+
+    if (!nuevoRol || nuevoRol === rolAnterior) return;
+
+    // Validación si el usuario se está cambiando el rol a sí mismo
+    if (perfil.id === this.currentUserId && nuevoRol === 'ENCARGADO') {
+      const confirmacion = await this.abrirDialogo(
+        '¿Cambiar tu propio rol?',
+        '¡Atención! Estás a punto de cambiar tu propio rol a Anfitriona. Si continúas, perderás el acceso a las funciones de administración inmediatamente.\n\n¿Estás seguro de que deseas continuar?',
+        'Sí, cambiar rol',
+        'Cancelar'
+      );
+
+      if (!confirmacion) {
+        selectEl.value = rolAnterior;
+        this.cdr.detectChanges();
+        return;
+      }
+    } else {
+      const nombreRol = nuevoRol === 'ADMINISTRADOR' ? 'Administrador' : 'Anfitriona';
+      const confirmacion = await this.abrirDialogo(
+        'Confirmar cambio de rol',
+        `¿Deseas cambiar el rol de "${perfil.nombre}" a ${nombreRol}?`,
+        'Sí, cambiar rol',
+        'Cancelar'
+      );
+
+      if (!confirmacion) {
+        selectEl.value = rolAnterior;
+        this.cdr.detectChanges();
+        return;
+      }
+    }
+
+    this.personalGuardandoId = perfil.id;
+    this.cdr.detectChanges();
+
+    try {
+      const updateData: Record<string, any> = { rol: nuevoRol };
+      if (nuevoRol === 'ENCARGADO' && !perfil.hora_entrada) {
+        updateData['hora_entrada'] = '09:00';
+        updateData['hora_salida'] = '20:00';
+        perfil.hora_entrada = '09:00';
+        perfil.hora_salida = '20:00';
+      }
+
+      const updatePromise = this.supabase.from('perfiles')
+        .update(updateData)
+        .eq('id', perfil.id);
+
+      const { error } = await this.ejecutarConTimeout(updatePromise as any, 7000) as any;
+
+      if (error) {
+        selectEl.value = rolAnterior;
+        await this.abrirDialogo('Error', 'Error al actualizar el rol: ' + error.message, 'Entendido');
+      } else {
+        perfil.rol = nuevoRol;
+        selectEl.value = nuevoRol;
+        const nombreRol = nuevoRol === 'ADMINISTRADOR' ? 'Administrador' : 'Anfitriona';
+        this.mostrarFeedback(`Rol de ${perfil.nombre} actualizado a ${nombreRol}`);
+      }
+    } catch (err: any) {
+      selectEl.value = rolAnterior;
+      console.error('Error inesperado al cambiar rol:', err);
+      await this.abrirDialogo('Error', 'No se pudo actualizar el rol: ' + (err?.message || err), 'Entendido');
     } finally {
       this.personalGuardandoId = null;
       this.cdr.detectChanges();
