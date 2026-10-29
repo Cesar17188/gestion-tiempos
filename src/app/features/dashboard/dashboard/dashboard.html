@@ -196,11 +196,12 @@
                 </span>
               } @else {
                 <span class="text-[10px] bg-green-100 text-green-700 font-bold px-2 py-0.5 rounded-md border border-green-200">
-                  ✓ Registrado
+                  ✓ Registrado@if (sesion.tiempoCierreRestanteStr && sesion.tiempoCierreRestanteStr !== '0:00' && sesion.tipologia && sesion.tipologia !== '' && sesion.tipologia !== '-') { • Cierra en {{ sesion.tiempoCierreRestanteStr }}}
                 </span>
               }
             </div>
-            <textarea (blur)="guardarObservacionesTipologia(sesion, $event)"
+            <textarea (input)="onInputObservacionesTipologia(sesion, $event)"
+              (blur)="guardarObservacionesTipologia(sesion, $event)"
               [value]="sesion.observacionesTipologia || ''" placeholder="Ej. Vino acompañada de varias amigas..."
               style="width: 100%; padding: 0.5rem 0.75rem; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 0.9rem; background-color: white; outline: none; color: #334155; resize: vertical; min-height: 60px;"
               [ngStyle]="{'border-color': (!sesion.observacionesTipologia || sesion.observacionesTipologia.trim() === '') ? '#f87171' : '#e2e8f0', 'background-color': (!sesion.observacionesTipologia || sesion.observacionesTipologia.trim() === '') ? '#fef2f2' : 'white'}"></textarea>

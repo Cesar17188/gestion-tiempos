@@ -51,6 +51,8 @@ export interface SesionJuego {
   oculta?: boolean;
   tipologia?: string;
   observacionesTipologia?: string;
+  fechaObservacionesIngresadas?: Date;
+  tiempoCierreRestanteStr?: string;
 }
 
 @Component({
@@ -363,10 +365,42 @@ export class Dashboard implements OnInit, OnDestroy {
     }
   }
 
+  // Helpers para persistencia de timestamp de observaciones (Regla de 3 minutos para cerrar)
+  private guardarTimestampObservaciones(sesionId: string, fecha: Date) {
+    if (isPlatformBrowser(this.platformId)) {
+      try {
+        localStorage.setItem(`vp_obs_ts_${sesionId}`, fecha.toISOString());
+      } catch (e) {
+        // Ignorar si localStorage no está disponible
+      }
+    }
+  }
+
+  private obtenerTimestampObservaciones(sesionId: string): string | null {
+    if (isPlatformBrowser(this.platformId)) {
+      try {
+        return localStorage.getItem(`vp_obs_ts_${sesionId}`);
+      } catch (e) {
+        return null;
+      }
+    }
+    return null;
+  }
+
+  private limpiarTimestampObservaciones(sesionId: string) {
+    if (isPlatformBrowser(this.platformId)) {
+      try {
+        localStorage.removeItem(`vp_obs_ts_${sesionId}`);
+      } catch (e) {
+        // Ignorar
+      }
+    }
+  }
+
   // 1. CONSULTA REAL A LA BASE DE DATOS
   async cargarSesionesActivas() {
-    const hace3Minutos = new Date(Date.now() - 180000).toISOString();
-    // Traemos únicamente sesiones activas o sesiones finalizadas recientemente (últimos 3 minutos)
+    const hace4Horas = new Date(Date.now() - 4 * 3600000).toISOString();
+    // Traemos sesiones activas o sesiones finalizadas en las últimas 4 horas para gestionar su cierre
     const { data, error } = await this.supabaseService.db('sesiones_juego')
       .select(`
         id,
@@ -400,7 +434,7 @@ export class Dashboard implements OnInit, OnDestroy {
           )
         )
       `)
-      .or(`estado.eq.ACTIVO,and(estado.eq.FINALIZADO,salida_estimada_at.gte.${hace3Minutos})`);
+      .or(`estado.eq.ACTIVO,and(estado.eq.FINALIZADO,salida_estimada_at.gte.${hace4Horas})`);
 
     if (error) {
       console.error('Error al cargar las sesiones:', error);
@@ -416,8 +450,9 @@ export class Dashboard implements OnInit, OnDestroy {
       this.sesiones = data.map((item: any) => {
         const tutoresArray = item.ninos?.tutores;
         let ultimoTutor: any = null;
+        const sesionPrevia = this.sesiones.find(s => s.id === item.id || s.ninoId === item.nino_id);
+
         if (Array.isArray(tutoresArray) && tutoresArray.length > 0) {
-          const sesionPrevia = this.sesiones.find(s => s.id === item.id || s.ninoId === item.nino_id);
           if (sesionPrevia?.tutorId) {
             ultimoTutor = tutoresArray.find((t: any) => t.id === sesionPrevia.tutorId) || tutoresArray[tutoresArray.length - 1];
           } else {
@@ -425,6 +460,15 @@ export class Dashboard implements OnInit, OnDestroy {
           }
         } else {
           ultimoTutor = tutoresArray;
+        }
+
+        // Recuperar timestamp de observaciones si ya se ingresaron
+        let fechaObs: Date | undefined = sesionPrevia?.fechaObservacionesIngresadas;
+        if (!fechaObs && item.observaciones_tipologia && item.observaciones_tipologia.trim() !== '') {
+          const guardado = this.obtenerTimestampObservaciones(item.id);
+          if (guardado) {
+            fechaObs = new Date(guardado);
+          }
         }
         
         const costoBaseVal = item.costo_base !== null && item.costo_base !== undefined ? Number(item.costo_base) : 7;
@@ -462,7 +506,9 @@ export class Dashboard implements OnInit, OnDestroy {
           extensionAplicada: minutosExtraVal > 0,
           costoTotal: costoBaseVal + costoExtraVal,
           tipologia: item.tipologia || '',
-          observacionesTipologia: item.observaciones_tipologia || ''
+          observacionesTipologia: item.observaciones_tipologia || '',
+          fechaObservacionesIngresadas: fechaObs,
+          tiempoCierreRestanteStr: sesionPrevia?.tiempoCierreRestanteStr || ''
         };
       });
 
@@ -544,9 +590,46 @@ export class Dashboard implements OnInit, OnDestroy {
       const tieneTipologia = !!(sesion.tipologia && sesion.tipologia.trim() !== '' && sesion.tipologia !== '-');
       const tieneObservaciones = !!(sesion.observacionesTipologia && sesion.observacionesTipologia.trim() !== '');
 
-      // Solo se oculta la tarjeta si pasaron 3 minutos (180,000 ms) Y YA SE REGISTRÓ LA TIPOLOGÍA Y LAS OBSERVACIONES
-      if (diffMs <= -180000 && tieneTipologia && tieneObservaciones) {
+      // Regla de 3 minutos: comienza a contar desde que se ingresa texto en observacionesTipologia
+      let pasaron3MinutosDesdeObs = false;
+
+      if (tieneObservaciones) {
+        if (!sesion.fechaObservacionesIngresadas) {
+          const guardado = this.obtenerTimestampObservaciones(sesion.id);
+          if (guardado) {
+            sesion.fechaObservacionesIngresadas = new Date(guardado);
+          } else {
+            // Si la sesión expiró hace más de 3 minutos, ya tenía tipología y observaciones en BD,
+            // pero no tenía timestamp local, es una sesión finalizada archivada previamente
+            if (diffMs <= -180000 && tieneTipologia) {
+              pasaron3MinutosDesdeObs = true;
+            } else {
+              sesion.fechaObservacionesIngresadas = new Date(ahora);
+              this.guardarTimestampObservaciones(sesion.id, sesion.fechaObservacionesIngresadas);
+            }
+          }
+        }
+
+        if (sesion.fechaObservacionesIngresadas) {
+          const transcurrido = ahora - sesion.fechaObservacionesIngresadas.getTime();
+          pasaron3MinutosDesdeObs = transcurrido >= 180000;
+          const msRestantes = Math.max(0, 180000 - transcurrido);
+          const totalSegs = Math.ceil(msRestantes / 1000);
+          const mins = Math.floor(totalSegs / 60);
+          const segs = totalSegs % 60;
+          sesion.tiempoCierreRestanteStr = `${mins}:${segs.toString().padStart(2, '0')}`;
+        }
+      } else {
+        sesion.fechaObservacionesIngresadas = undefined;
+        this.limpiarTimestampObservaciones(sesion.id);
+        sesion.tiempoCierreRestanteStr = '';
+      }
+
+      // Solo se oculta la tarjeta si expiró el tiempo de juego, tiene tipología, tiene observaciones
+      // Y transcurrieron los 3 minutos desde que se ingresó texto en observacionesTipologia
+      if (diffMs <= 0 && tieneTipologia && tieneObservaciones && pasaron3MinutosDesdeObs) {
         sesion.oculta = true;
+        this.limpiarTimestampObservaciones(sesion.id);
       } else {
         sesion.oculta = false;
         visibles++;
@@ -861,12 +944,40 @@ export class Dashboard implements OnInit, OnDestroy {
     }
   }
 
+  // INGRESO EN TIEMPO REAL DE OBSERVACIONES TIPOLOGÍA (Inicia conteo de 3 minutos)
+  onInputObservacionesTipologia(sesion: SesionJuego, event: Event) {
+    const inputElement = event.target as HTMLInputElement | HTMLTextAreaElement;
+    const observaciones = inputElement.value;
+    sesion.observacionesTipologia = observaciones;
+
+    if (observaciones && observaciones.trim() !== '') {
+      if (!sesion.fechaObservacionesIngresadas) {
+        sesion.fechaObservacionesIngresadas = new Date();
+        this.guardarTimestampObservaciones(sesion.id, sesion.fechaObservacionesIngresadas);
+      }
+    } else {
+      sesion.fechaObservacionesIngresadas = undefined;
+      this.limpiarTimestampObservaciones(sesion.id);
+    }
+    this.actualizarTiempos();
+  }
+
   // GUARDAR OBSERVACIONES TIPOLOGÍA
   async guardarObservacionesTipologia(sesion: SesionJuego, event: Event) {
     const inputElement = event.target as HTMLInputElement | HTMLTextAreaElement;
     const observaciones = inputElement.value;
 
     sesion.observacionesTipologia = observaciones;
+
+    if (observaciones && observaciones.trim() !== '') {
+      if (!sesion.fechaObservacionesIngresadas) {
+        sesion.fechaObservacionesIngresadas = new Date();
+        this.guardarTimestampObservaciones(sesion.id, sesion.fechaObservacionesIngresadas);
+      }
+    } else {
+      sesion.fechaObservacionesIngresadas = undefined;
+      this.limpiarTimestampObservaciones(sesion.id);
+    }
 
     const { error } = await this.supabaseService.db('sesiones_juego')
       .update({ observaciones_tipologia: observaciones })
@@ -880,7 +991,7 @@ export class Dashboard implements OnInit, OnDestroy {
       if (observaciones && observaciones.trim() !== '') {
         this.mostrarToast('Observaciones registradas exitosamente.', 'success');
       }
-      this.actualizarTiempos(); // Si ya pasaron más de 3 min y tiene tipología, ahora sí se archivará
+      this.actualizarTiempos(); // Si ya pasaron 3 min desde que se ingresó texto y tiene tipología, se archivará
     }
   }
 

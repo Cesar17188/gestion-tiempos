@@ -136,4 +136,35 @@ describe('Dashboard', () => {
     expect(sesion.costoExtra).toBe(3);
     expect(sesion.extensionAplicada).toBe(true);
   });
+
+  it('debería iniciar la regla de 3 minutos para cerrar solo cuando se ingresan observaciones', async () => {
+    await Promise.resolve();
+    const sesion = component.sesiones[0];
+
+    // Avanzamos 15 minutos: la sesión ya expiró hace 5 minutos (diffMs = -5 min)
+    vi.advanceTimersByTime(15 * 60000);
+    component.actualizarTiempos();
+
+    // Establecemos tipología registrada
+    sesion.tipologia = 'Mamá Social';
+    component.actualizarTiempos();
+
+    // Sin observaciones: NO debe ocultarse
+    expect(sesion.oculta).toBe(false);
+
+    // Simulamos ingreso de observaciones mediante evento input
+    component.onInputObservacionesTipologia(sesion, { target: { value: 'Familia agradable' } } as any);
+    expect(sesion.observacionesTipologia).toBe('Familia agradable');
+    expect(sesion.fechaObservacionesIngresadas).toBeTruthy();
+
+    // A los 2 minutos (120,000 ms): NO debe estar oculta aún
+    vi.advanceTimersByTime(2 * 60000);
+    component.actualizarTiempos();
+    expect(sesion.oculta).toBe(false);
+
+    // A los 3 minutos (avanzamos 1 minuto más): Ahora SÍ debe ocultarse
+    vi.advanceTimersByTime(1 * 60000);
+    component.actualizarTiempos();
+    expect(sesion.oculta).toBe(true);
+  });
 });
