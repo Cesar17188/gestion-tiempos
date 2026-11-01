@@ -311,6 +311,7 @@ export class Ingreso implements OnInit {
   crearNinoFormGroup(): FormGroup {
     return this.fb.group({
       ninoId: [null],
+      ninoNombreOriginal: [''],
       ninoNombre: ['', [Validators.required, Validators.minLength(3)]],
       ninoAlias: [''],
       ninoFechaNacimiento: ['', [Validators.required]],
@@ -318,6 +319,43 @@ export class Ingreso implements OnInit {
       ninoNotas: [''], // Alergias, observaciones, quién lo retira, etc.
       sesionActivaInfo: [null]
     });
+  }
+
+  limpiarNino(index: number) {
+    const ninoGroup = this.ninosFormArray.at(index);
+    if (!ninoGroup) return;
+    ninoGroup.patchValue({
+      ninoId: null,
+      ninoNombreOriginal: '',
+      ninoNombre: '',
+      ninoAlias: '',
+      ninoFechaNacimiento: '',
+      ninoCodigo: this.generarCodigoNino(),
+      ninoNotas: '',
+      sesionActivaInfo: null
+    });
+    ninoGroup.markAsPristine();
+    ninoGroup.markAsUntouched();
+    this.resultadosBusquedaNinos[index] = [];
+    this.cdr.detectChanges();
+  }
+
+  onNombreNinoInput(index: number) {
+    const ninoGroup = this.ninosFormArray.at(index);
+    if (!ninoGroup) return;
+
+    const ninoId = ninoGroup.get('ninoId')?.value;
+    const nombreOriginal = (ninoGroup.get('ninoNombreOriginal')?.value || '').trim().toLowerCase();
+    const nombreActual = (ninoGroup.get('ninoNombre')?.value || '').trim().toLowerCase();
+
+    if (ninoId && nombreActual !== nombreOriginal) {
+      ninoGroup.patchValue({
+        ninoId: null,
+        ninoNombreOriginal: '',
+        ninoCodigo: this.generarCodigoNino(),
+        sesionActivaInfo: null
+      }, { emitEvent: false });
+    }
   }
 
   async verificarSesionesActivasNino(ninoId: string): Promise<{ activa: boolean; salidaEstimada?: string } | null> {
@@ -434,6 +472,7 @@ export class Ingreso implements OnInit {
 
             ninoGroup.patchValue({
               ninoId: nino.id,
+              ninoNombreOriginal: nino.nombres_apellidos || '',
               ninoNombre: nino.nombres_apellidos || '',
               ninoAlias: nino.alias || '',
               ninoFechaNacimiento: fechaParsed,
@@ -600,6 +639,7 @@ export class Ingreso implements OnInit {
 
               ninoGroup.patchValue({
                 ninoId: nino.id,
+                ninoNombreOriginal: nino.nombres_apellidos || '',
                 ninoNombre: nino.nombres_apellidos || '',
                 ninoAlias: nino.alias || '',
                 ninoFechaNacimiento: fechaParsed,
@@ -657,10 +697,24 @@ export class Ingreso implements OnInit {
       return;
     }
 
+    let ninosParaRegistrar: any[] = [...values.ninos];
+
     try {
       const ninosConSesionActiva: string[] = [];
+      const ninosSinSesionActiva: any[] = [];
 
       for (const nino of values.ninos) {
+        const nombreOriginal = (nino.ninoNombreOriginal || '').trim().toLowerCase();
+        const nombreActual = (nino.ninoNombre || '').trim().toLowerCase();
+
+        // Si el operador reemplazó el nombre de un niño precargado por otro distinto, desvincular el ID anterior
+        if (nino.ninoId && nombreOriginal && nombreActual !== nombreOriginal) {
+          nino.ninoId = null;
+          nino.ninoNombreOriginal = '';
+          nino.ninoCodigo = this.generarCodigoNino();
+          nino.sesionActivaInfo = null;
+        }
+
         let ninoIdAValidar = nino.ninoId;
         if (!ninoIdAValidar && nino.ninoNombre) {
           const { data: existingNino } = await this.supabaseService.db('ninos')
@@ -672,27 +726,37 @@ export class Ingreso implements OnInit {
           }
         }
 
+        let tieneSesionActiva = false;
         if (ninoIdAValidar) {
           const sesionActiva = await this.verificarSesionesActivasNino(ninoIdAValidar);
           if (sesionActiva && sesionActiva.activa) {
+            tieneSesionActiva = true;
             ninosConSesionActiva.push(
               `"${nino.ninoNombre}" (Sesión activa hasta las ${sesionActiva.salidaEstimada})`
             );
           }
         }
+
+        if (!tieneSesionActiva) {
+          ninosSinSesionActiva.push(nino);
+        }
       }
 
-      if (ninosConSesionActiva.length > 0) {
+      // Si TODOS los niños en el formulario ya tienen sesión activa, bloquear y avisar.
+      // Si hay otros niños nuevos/sin sesión activa junto al mismo adulto responsable, permitir registrar a los nuevos omitiendo a los que ya están en sala.
+      if (ninosConSesionActiva.length > 0 && ninosSinSesionActiva.length === 0) {
         this.isLoading = false;
         await this.abrirDialogo(
           'Sesión en Curso Detectada',
-          'No se puede registrar el ingreso porque el niño(a) ya se encuentra jugando en una sesión activa. Debes esperar a que acabe o finalizarla desde el panel de control antes de un nuevo ingreso:',
+          'No se puede registrar el ingreso porque el niño(a) ya se encuentra jugando en una sesión activa. Si desea ingresar a otro niño con este adulto responsable, presione "Limpiar / Nuevo niño" o agregue al otro niño:',
           ninosConSesionActiva,
           'warning',
           'Entendido'
         );
         return;
       }
+
+      ninosParaRegistrar = ninosSinSesionActiva;
     } catch (verifError) {
       console.error('Error validando sesiones activas:', verifError);
     }
@@ -749,8 +813,8 @@ export class Ingreso implements OnInit {
         tutorIdFinal = tutorData.id;
       }
 
-      // 2. PASO DOS: Para cada niño, insertarlo o actualizarlo, y luego crear su sesión
-      for (const nino of values.ninos) {
+      // 2. PASO DOS: Para cada niño sin sesión activa, insertarlo o actualizarlo, y luego crear su sesión
+      for (const nino of ninosParaRegistrar) {
         let ninoIdFinal: string | null = nino.ninoId || null;
 
         if (!ninoIdFinal) {
@@ -848,12 +912,12 @@ export class Ingreso implements OnInit {
               ? values.tutorAlias.trim() 
               : (values.tutorNombre || '').trim();
 
-            const nombresPreferidosNinos = values.ninos
+            const nombresPreferidosNinos = ninosParaRegistrar
               .map((n: any) => (n.ninoAlias && n.ninoAlias.trim()) ? n.ninoAlias.trim() : n.ninoNombre)
               .filter(Boolean)
               .join(', ');
 
-            const nombresCompletosNinos = values.ninos
+            const nombresCompletosNinos = ninosParaRegistrar
               .map((n: any) => n.ninoNombre)
               .filter(Boolean)
               .join(', ');

@@ -127,4 +127,78 @@ describe('Ingreso', () => {
 
     expect(navigateSpy).toHaveBeenCalledWith(['/dashboard']);
   });
+
+  it('debería permitir registrar un nuevo niño con el mismo adulto aunque otro niño ya tenga sesión activa (agregando otro niño)', async () => {
+    const navigateSpy = vi.spyOn(router, 'navigate');
+    const dialogoSpy = vi.spyOn(component, 'abrirDialogo').mockResolvedValue(true);
+
+    component.ingresoForm.patchValue({
+      tutorNombre: 'Laura Sánchez',
+      tutorCedula: '1713394748',
+      tutorParentesco: 'Mamá',
+      tutorWhatsapp: '0991234567',
+      tiempoMinutos: '30'
+    });
+
+    // Niño 1 precargado con sesión activa
+    component.ninosFormArray.at(0).patchValue({
+      ninoId: 'nino-activo-1',
+      ninoNombreOriginal: 'Mateo Sánchez',
+      ninoNombre: 'Mateo Sánchez',
+      ninoFechaNacimiento: '2018-03-10',
+      ninoCodigo: 'COD01',
+      sesionActivaInfo: { activa: true, salidaEstimada: '15:30' }
+    });
+
+    // Agregar segundo niño nuevo
+    component.agregarNino();
+    component.ninosFormArray.at(1).patchValue({
+      ninoNombre: 'Lucas Sánchez',
+      ninoFechaNacimiento: '2020-07-20',
+      ninoCodigo: 'COD02'
+    });
+
+    vi.spyOn(component, 'verificarSesionesActivasNino').mockImplementation(async (id: string) => {
+      if (id === 'nino-activo-1') return { activa: true, salidaEstimada: '15:30' };
+      return null;
+    });
+
+    supabaseMock.db().maybeSingle
+      .mockResolvedValueOnce({ data: null }) // búsqueda por nombre de Lucas en validación
+      .mockResolvedValueOnce({ data: { id: 'encargado-1' } }) // perfil
+      .mockResolvedValueOnce({ data: { id: 'tutor-1' } }) // tutor existente
+      .mockResolvedValueOnce({ data: null }) // búsqueda por nombre de Lucas en inserción
+      .mockResolvedValueOnce({ data: null }); // ninos_tutores link
+
+    supabaseMock.db().single.mockResolvedValue({ data: { id: 'nino-nuevo-2' }, error: null });
+
+    await component.onSubmit();
+
+    expect(dialogoSpy).not.toHaveBeenCalledWith(
+      'Sesión en Curso Detectada',
+      expect.any(String),
+      expect.any(Array),
+      expect.any(String),
+      expect.any(String)
+    );
+    expect(navigateSpy).toHaveBeenCalledWith(['/dashboard']);
+  });
+
+  it('debería desvincular el ID y la sesión activa cuando se edita el nombre del niño precargado por uno nuevo', () => {
+    component.ninosFormArray.at(0).patchValue({
+      ninoId: 'nino-activo-1',
+      ninoNombreOriginal: 'Mateo Sánchez',
+      ninoNombre: 'Mateo Sánchez',
+      ninoFechaNacimiento: '2018-03-10',
+      ninoCodigo: 'COD01',
+      sesionActivaInfo: { activa: true, salidaEstimada: '15:30' }
+    });
+
+    // El operador escribe el nombre de otro niño encima del campo
+    component.ninosFormArray.at(0).get('ninoNombre')?.setValue('Sofía Sánchez');
+    component.onNombreNinoInput(0);
+
+    expect(component.ninosFormArray.at(0).get('ninoId')?.value).toBeNull();
+    expect(component.ninosFormArray.at(0).get('sesionActivaInfo')?.value).toBeNull();
+  });
 });
