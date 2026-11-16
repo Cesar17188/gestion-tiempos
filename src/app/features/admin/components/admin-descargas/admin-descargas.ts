@@ -163,9 +163,8 @@ export class AdminDescargas implements OnInit {
       // Consultamos absolutamente todo el histórico cruzando relaciones
       let query = this.supabase.from('sesiones_juego')
         .select(`
-          id, ingreso_at, salida_estimada_at, estado, costo_base, minutos_extra, costo_extra, adultos_adicionales, tipologia, observaciones_tipologia,
-          nino_id,
-          ninos ( id, nombres_apellidos, fecha_nacimiento, notas, tutores ( id, nombres_apellidos, parentesco, whatsapp, correo, cedula, sector, tipo_pase, observaciones_tipo_pase ) ),
+          *,
+          ninos ( id, nombres_apellidos, fecha_nacimiento, notas, tutores ( * ) ),
           perfiles ( nombre )
         `)
         .order('ingreso_at', { ascending: false });
@@ -178,15 +177,49 @@ export class AdminDescargas implements OnInit {
         query = query.lte('ingreso_at', `${this.fechaFin}T23:59:59.999Z`);
       }
 
-      const { data, error } = await query;
+      const [{ data, error }, { data: todosTutoresData }] = await Promise.all([
+        query,
+        this.supabase.from('tutores').select('*')
+      ]);
 
       if (error) {
         console.error('Supabase Error al cargar sesiones:', error);
         return;
       }
 
+      const mapaTutoresGlobal = new Map<string, any>();
+      if (Array.isArray(todosTutoresData)) {
+        todosTutoresData.forEach((t: any) => {
+          if (t?.id) mapaTutoresGlobal.set(t.id, t);
+        });
+      }
+
+      let tutorSesionMap: Record<string, string> = {};
+      if (typeof window !== 'undefined' && window.localStorage) {
+        try {
+          const rawMap = localStorage.getItem('vp_sesion_tutor_map');
+          if (rawMap) tutorSesionMap = JSON.parse(rawMap);
+        } catch (e) {
+          // Ignorar si localStorage no está disponible
+        }
+      }
+
       if (data) {
         const diasSemana = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+
+        // Agrupar sesiones por niño en orden cronológico (de más antigua a más reciente)
+        // para asociar correctamente sesiones históricas previas a la columna tutor_id
+        const sesionesCronologicasPorNino = new Map<string, string[]>();
+        [...data]
+          .sort((a: any, b: any) => new Date(a.ingreso_at).getTime() - new Date(b.ingreso_at).getTime())
+          .forEach((s: any) => {
+            const nId = s.nino_id || s.ninos?.id;
+            if (!nId) return;
+            if (!sesionesCronologicasPorNino.has(nId)) {
+              sesionesCronologicasPorNino.set(nId, []);
+            }
+            sesionesCronologicasPorNino.get(nId)!.push(s.id);
+          });
         
         this.baseCompletaAplanada = data.map((item: any) => {
           const ingresoDate = new Date(item.ingreso_at);
@@ -202,28 +235,75 @@ export class AdminDescargas implements OnInit {
             edad = Math.abs(ageDate.getUTCFullYear() - 1970).toString();
           }
 
+          const ninoId = item.nino_id || item.ninos?.id;
           const tutoresArray = item.ninos?.tutores;
-          const ultimoTutor = (Array.isArray(tutoresArray) && tutoresArray.length > 0) ? tutoresArray[tutoresArray.length - 1] : tutoresArray;
+          const tutorIdSesion = item.tutor_id || tutorSesionMap[item.id];
+          let tutorDeLaSesion: any = null;
 
-          const nombreTutor = ultimoTutor?.nombres_apellidos || 'Desconocido';
-          const parentescoTutor = ultimoTutor?.parentesco || 'N/A';
+          // 1. Si la sesión tiene registrado el tutor_id exacto que llevó al niño en esta visita, usarlo directamente
+          if (tutorIdSesion) {
+            if (Array.isArray(tutoresArray)) {
+              tutorDeLaSesion = tutoresArray.find((t: any) => t.id === tutorIdSesion);
+            } else if (tutoresArray?.id === tutorIdSesion) {
+              tutorDeLaSesion = tutoresArray;
+            }
+            if (!tutorDeLaSesion && mapaTutoresGlobal.has(tutorIdSesion)) {
+              tutorDeLaSesion = mapaTutoresGlobal.get(tutorIdSesion);
+            }
+          }
+
+          // 2. Fallback inteligente para sesiones históricas previas sin tutor_id explícito
+          if (!tutorDeLaSesion) {
+            if (Array.isArray(tutoresArray) && tutoresArray.length > 0) {
+              if (tutoresArray.length === 1) {
+                tutorDeLaSesion = tutoresArray[0];
+              } else {
+                const limiteSesionMs = new Date(item.salida_estimada_at || item.ingreso_at).getTime() + 10 * 60000;
+                const tutoresConFecha = tutoresArray.filter((t: any) => t.created_at && !isNaN(new Date(t.created_at).getTime()));
+
+                if (tutoresConFecha.length > 0) {
+                  const candidatos = tutoresConFecha
+                    .filter((t: any) => new Date(t.created_at).getTime() <= limiteSesionMs)
+                    .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+                  if (candidatos.length > 0) {
+                    tutorDeLaSesion = candidatos[0];
+                  }
+                }
+
+                if (!tutorDeLaSesion) {
+                  const sesionesNino = ninoId ? (sesionesCronologicasPorNino.get(ninoId) || []) : [];
+                  const idxCronologico = sesionesNino.indexOf(item.id);
+                  if (idxCronologico >= 0) {
+                    tutorDeLaSesion = tutoresArray[Math.min(idxCronologico, tutoresArray.length - 1)];
+                  } else {
+                    tutorDeLaSesion = tutoresArray[0];
+                  }
+                }
+              }
+            } else {
+              tutorDeLaSesion = tutoresArray;
+            }
+          }
+
+          const nombreTutor = tutorDeLaSesion?.nombres_apellidos || 'Desconocido';
+          const parentescoTutor = tutorDeLaSesion?.parentesco || 'N/A';
           const observaciones = item.ninos?.notas || '';
 
           return {
             ID_Sesion: item.id,
-            Nino_Id: item.nino_id || item.ninos?.id,
-            Tutor_Id: ultimoTutor?.id,
+            Nino_Id: ninoId,
+            Tutor_Id: tutorDeLaSesion?.id,
             Ingreso_ISO: item.ingreso_at,
             Salida_ISO: item.salida_estimada_at,
             Adultos_Adicionales: item.adultos_adicionales || 0,
-            Tutor_Whatsapp: ultimoTutor?.whatsapp || '',
-            Tutor_Correo: ultimoTutor?.correo || '',
-            Tutor_Sector: ultimoTutor?.sector || '',
-            Tutor_Cedula: ultimoTutor?.cedula || '',
-            Tutor_Tipo_Pase: ultimoTutor?.tipo_pase || '',
-            Tutor_Observaciones_Tipo_Pase: ultimoTutor?.observaciones_tipo_pase || '',
-            Tipo_Pase: ultimoTutor?.tipo_pase || '-',
-            Observaciones_Tipo_Pase: ultimoTutor?.observaciones_tipo_pase || '-',
+            Tutor_Whatsapp: tutorDeLaSesion?.whatsapp || '',
+            Tutor_Correo: tutorDeLaSesion?.correo || '',
+            Tutor_Sector: tutorDeLaSesion?.sector || '',
+            Tutor_Cedula: tutorDeLaSesion?.cedula || '',
+            Tutor_Tipo_Pase: tutorDeLaSesion?.tipo_pase || '',
+            Tutor_Observaciones_Tipo_Pase: tutorDeLaSesion?.observaciones_tipo_pase || '',
+            Tipo_Pase: tutorDeLaSesion?.tipo_pase || '-',
+            Observaciones_Tipo_Pase: tutorDeLaSesion?.observaciones_tipo_pase || '-',
             Fecha_Ingreso: fechaIngreso,
             Hora_Ingreso: horaIngreso,
             Dia_Semana: diaSemana,

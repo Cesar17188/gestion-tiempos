@@ -70,7 +70,7 @@ export class Ingreso implements OnInit {
   ingresoForm: FormGroup = this.fb.group({
     // Datos del Tutor
     tutorNombre: ['', [Validators.required, Validators.minLength(4)]],
-    tutorCedula: ['', [Validators.required, validarCedulaOPasaporte()]],
+    tutorCedula: ['', [Validators.required, Validators.maxLength(25), validarCedulaOPasaporte()]],
     tutorAlias: [''],
     tutorParentesco: ['', [Validators.required]],
     tutorSector: [''],
@@ -877,21 +877,47 @@ export class Ingreso implements OnInit {
           ? (Number(this.precioBase ?? 7) + Number(this.precioPaqueteExtra ?? 3))
           : Number(this.precioBase ?? 7);
 
-        const { error: sesionError } = await this.supabaseService.db('sesiones_juego')
+        const sesionBasePayload: any = {
+          nino_id: ninoIdFinal,
+          ingreso_at: horaIngreso.toISOString(),
+          salida_estimada_at: horaSalidaEstimada.toISOString(),
+          estado: 'ACTIVO',
+          minutos_contratados: minutosAAgregar,
+          adultos_adicionales: adultosAdicionales,
+          costo_base: costoBase,
+          costo_extra: costoExtraInicial,
+          minutos_extra: 0,
+          encargado_id: encargadoId
+        };
+
+        let { data: sesionInsertada, error: sesionError } = await this.supabaseService.db('sesiones_juego')
           .insert({
-            nino_id: ninoIdFinal,
-            ingreso_at: horaIngreso.toISOString(),
-            salida_estimada_at: horaSalidaEstimada.toISOString(),
-            estado: 'ACTIVO',
-            minutos_contratados: minutosAAgregar,
-            adultos_adicionales: adultosAdicionales,
-            costo_base: costoBase,
-            costo_extra: costoExtraInicial,
-            minutos_extra: 0,
-            encargado_id: encargadoId
-          });
+            ...sesionBasePayload,
+            tutor_id: tutorIdFinal
+          })
+          .select('id');
+
+        if (sesionError && sesionError.message && sesionError.message.includes('tutor_id')) {
+          const fallbackRes = await this.supabaseService.db('sesiones_juego')
+            .insert(sesionBasePayload)
+            .select('id');
+          sesionInsertada = fallbackRes.data;
+          sesionError = fallbackRes.error;
+        }
 
         if (sesionError) throw new Error(`Error al iniciar sesión para ${nino.ninoNombre}: ${sesionError.message}`);
+
+        const sesionCreadaId = Array.isArray(sesionInsertada) ? sesionInsertada[0]?.id : (sesionInsertada as any)?.id;
+        if (sesionCreadaId && tutorIdFinal && typeof window !== 'undefined' && window.localStorage) {
+          try {
+            const rawMap = localStorage.getItem('vp_sesion_tutor_map');
+            const map = rawMap ? JSON.parse(rawMap) : {};
+            map[sesionCreadaId] = tutorIdFinal;
+            localStorage.setItem('vp_sesion_tutor_map', JSON.stringify(map));
+          } catch (e) {
+            // Ignorar si localStorage no está disponible
+          }
+        }
       }
 
       // Enviar mensaje de bienvenida por WhatsApp al tutor

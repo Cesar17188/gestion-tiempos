@@ -88,9 +88,11 @@ describe('Custom Validators', () => {
       expect(validator(new FormControl('9999999999'))).not.toBeNull(); // provincia inexistente
     });
 
-    it('debería aceptar pasaportes alfanuméricos', () => {
+    it('debería aceptar pasaportes e identificaciones de hasta 25 caracteres y rechazar mayores a 25', () => {
       expect(validator(new FormControl('A12345678'))).toBeNull();
       expect(validator(new FormControl('PASSPORT-99'))).toBeNull();
+      expect(validator(new FormControl('1234567890123456789012345'))).toBeNull(); // 25 caracteres
+      expect(validator(new FormControl('12345678901234567890123456'))).not.toBeNull(); // 26 caracteres
     });
   });
 

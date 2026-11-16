@@ -149,7 +149,7 @@ export class Dashboard implements OnInit, OnDestroy {
 
   tutorUpdateForm: FormGroup = this.fb.group({
     tutorNombre: ['', [Validators.required, Validators.minLength(4)]],
-    tutorCedula: ['', [Validators.required, validarCedulaOPasaporte()]],
+    tutorCedula: ['', [Validators.required, Validators.maxLength(25), validarCedulaOPasaporte()]],
     tutorAlias: [''],
     tutorParentesco: ['', [Validators.required]],
     tutorSector: [''],
@@ -403,16 +403,7 @@ export class Dashboard implements OnInit, OnDestroy {
     // Traemos sesiones activas o sesiones finalizadas en las últimas 4 horas para gestionar su cierre
     const { data, error } = await this.supabaseService.db('sesiones_juego')
       .select(`
-        id,
-        nino_id,
-        ingreso_at,
-        salida_estimada_at,
-        costo_base,
-        minutos_extra,
-        costo_extra,
-        adultos_adicionales,
-        tipologia,
-        observaciones_tipologia,
+        *,
         ninos (
           id,
           nombres_apellidos,
@@ -445,16 +436,27 @@ export class Dashboard implements OnInit, OnDestroy {
       return;
     }
 
+    let tutorSesionMap: Record<string, string> = {};
+    if (isPlatformBrowser(this.platformId)) {
+      try {
+        const rawMap = localStorage.getItem('vp_sesion_tutor_map');
+        if (rawMap) tutorSesionMap = JSON.parse(rawMap);
+      } catch (e) {
+        // Ignorar
+      }
+    }
+
     // Mapeamos los datos de Supabase a nuestra interfaz visual de Angular
     if (data) {
       this.sesiones = data.map((item: any) => {
         const tutoresArray = item.ninos?.tutores;
         let ultimoTutor: any = null;
         const sesionPrevia = this.sesiones.find(s => s.id === item.id || s.ninoId === item.nino_id);
+        const tutorIdSesion = item.tutor_id || tutorSesionMap[item.id] || sesionPrevia?.tutorId;
 
         if (Array.isArray(tutoresArray) && tutoresArray.length > 0) {
-          if (sesionPrevia?.tutorId) {
-            ultimoTutor = tutoresArray.find((t: any) => t.id === sesionPrevia.tutorId) || tutoresArray[tutoresArray.length - 1];
+          if (tutorIdSesion) {
+            ultimoTutor = tutoresArray.find((t: any) => t.id === tutorIdSesion) || tutoresArray[tutoresArray.length - 1];
           } else {
             ultimoTutor = tutoresArray[tutoresArray.length - 1];
           }
@@ -1182,19 +1184,8 @@ export class Dashboard implements OnInit, OnDestroy {
         tutorIdFinal = tutorData.id;
       }
 
-      // 2. Vincular el tutor al niño y desvincular el anterior si se cambió de persona
+      // 2. Vincular el tutor al niño sin eliminar los tutores de sesiones anteriores
       if (tutorIdFinal) {
-        if (currentTutorId && currentTutorId !== tutorIdFinal) {
-          try {
-            await this.supabaseService.db('ninos_tutores')
-              .delete()
-              .eq('tutor_id', currentTutorId)
-              .eq('nino_id', ninoId);
-          } catch (delErr) {
-            console.warn('Error al actualizar asociación de tutor previo:', delErr);
-          }
-        }
-
         const { data: linkExistente, error: linkError } = await this.supabaseService.db('ninos_tutores')
           .select('*')
           .eq('tutor_id', tutorIdFinal)
@@ -1209,7 +1200,7 @@ export class Dashboard implements OnInit, OnDestroy {
         }
       }
 
-      // 3. Actualizar la sesión con adultos extras y costos recalculados
+      // 3. Actualizar la sesión con el tutor de esta sesión, adultos extras y costos recalculados
       const precioAdulto = Number(this.precioAdultoExtra ?? 2);
       const nuevosAdultosExtra = Math.max(0, parseInt(values.adultosExtra ?? 0, 10) || 0);
       const adultosPrevios = Number(this.selectedSesionForUpdate.adultosAdicionales || 0);
@@ -1219,14 +1210,36 @@ export class Dashboard implements OnInit, OnDestroy {
       const nuevoCostoExtra = costoTiempoExtra + (nuevosAdultosExtra * precioAdulto);
       const nuevoCostoTotal = costoBase + nuevoCostoExtra;
 
-      const { error: sesionUpdErr } = await this.supabaseService.db('sesiones_juego')
+      let { error: sesionUpdErr } = await this.supabaseService.db('sesiones_juego')
         .update({
           adultos_adicionales: nuevosAdultosExtra,
-          costo_extra: nuevoCostoExtra
+          costo_extra: nuevoCostoExtra,
+          tutor_id: tutorIdFinal
         })
         .eq('id', sesionId);
 
+      if (sesionUpdErr && sesionUpdErr.message && sesionUpdErr.message.includes('tutor_id')) {
+        const fallbackUpd = await this.supabaseService.db('sesiones_juego')
+          .update({
+            adultos_adicionales: nuevosAdultosExtra,
+            costo_extra: nuevoCostoExtra
+          })
+          .eq('id', sesionId);
+        sesionUpdErr = fallbackUpd.error;
+      }
+
       if (sesionUpdErr) throw new Error(`Error al actualizar adultos extras: ${sesionUpdErr.message}`);
+
+      if (sesionId && tutorIdFinal && isPlatformBrowser(this.platformId)) {
+        try {
+          const rawMap = localStorage.getItem('vp_sesion_tutor_map');
+          const map = rawMap ? JSON.parse(rawMap) : {};
+          map[sesionId] = tutorIdFinal;
+          localStorage.setItem('vp_sesion_tutor_map', JSON.stringify(map));
+        } catch (e) {
+          // Ignorar
+        }
+      }
 
       // 4. Actualizar directamente el estado en memoria para actualización inmediata en la tarjeta
       this.sesiones.forEach(s => {

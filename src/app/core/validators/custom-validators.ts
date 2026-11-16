@@ -122,12 +122,12 @@ export function validarCedulaOPasaporte(): ValidatorFn {
       return { cedulaInvalida: 'El RUC ecuatoriano debe terminar en 001.' };
     }
 
-    // 3. Si es alfanumérico (Pasaporte o documento extranjero de 6 a 20 caracteres)
-    if (/^[a-zA-Z0-9-]{6,20}$/.test(str)) {
-      return null; // Pasaporte válido
+    // 3. Si es alfanumérico (Cédula extranjera, pasaporte o documento de hasta 25 caracteres)
+    if (/^[a-zA-Z0-9-]{6,25}$/.test(str)) {
+      return null; // Identificación válida
     }
 
-    return { cedulaInvalida: 'Ingrese una cédula ecuatoriana válida (10 dígitos) o pasaporte (6-20 caracteres).' };
+    return { cedulaInvalida: 'Ingrese una cédula ecuatoriana válida (10 dígitos) o identificación/pasaporte (6-25 caracteres).' };
   };
 }
 

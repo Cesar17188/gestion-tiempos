@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SupabaseService } from '../../../../core/services/supabase/supabase';
@@ -26,6 +26,7 @@ interface MetricaNino {
 })
 export class AdminNinos implements OnInit {
   private supabase = inject(SupabaseService);
+  private cdr = inject(ChangeDetectorRef);
 
   isLoading = true;
   fechaInicio: string = this.obtenerFechaHace(7);
@@ -37,8 +38,8 @@ export class AdminNinos implements OnInit {
   totalNinosFiltro: number = 0;
   diaGeneralMasVisitado: string = '-';
 
-  ngOnInit() {
-    this.cargarHistorialNinos();
+  async ngOnInit() {
+    await this.cargarHistorialNinos();
   }
 
   async cargarHistorialNinos() {
@@ -47,41 +48,56 @@ export class AdminNinos implements OnInit {
     // Reiniciamos el límite al hacer una nueva búsqueda
     this.limiteMostrar = 10;
 
-    // Consultamos las sesiones incluyendo el nombre del niño
-    let query = this.supabase.from('sesiones_juego')
-      .select(`
-        ingreso_at,
-        salida_estimada_at,
-        nino_id,
-        ninos (
-          nombres_apellidos
-        )
-      `);
+    try {
+      // Consultamos las sesiones incluyendo el nombre del niño
+      let query = this.supabase.db('sesiones_juego')
+        .select(`
+          ingreso_at,
+          salida_estimada_at,
+          nino_id,
+          ninos (
+            nombres_apellidos
+          )
+        `);
 
-    if (this.fechaInicio) {
-      query = query.gte('ingreso_at', `${this.fechaInicio}T00:00:00.000Z`);
-    }
-    if (this.fechaFin) {
-      query = query.lte('ingreso_at', `${this.fechaFin}T23:59:59.999Z`);
-    }
+      if (this.fechaInicio) {
+        query = query.gte('ingreso_at', `${this.fechaInicio}T00:00:00.000Z`);
+      }
+      if (this.fechaFin) {
+        query = query.lte('ingreso_at', `${this.fechaFin}T23:59:59.999Z`);
+      }
 
-    const { data, error } = await query;
+      const { data, error } = await query;
 
-    if (error) {
-      console.error('Error al obtener historial:', error);
+      if (error) {
+        console.error('Error al obtener historial:', error);
+        this.reporteNinos = [];
+        this.totalNinosFiltro = 0;
+        this.diaGeneralMasVisitado = '-';
+        return;
+      }
+
+      if (data) {
+        this.reporteNinos = this.procesarDatos(data);
+      } else {
+        this.reporteNinos = [];
+        this.totalNinosFiltro = 0;
+        this.diaGeneralMasVisitado = '-';
+      }
+    } catch (err) {
+      console.error('Error inesperado al cargar historial de niños:', err);
+      this.reporteNinos = [];
+      this.totalNinosFiltro = 0;
+      this.diaGeneralMasVisitado = '-';
+    } finally {
       this.isLoading = false;
-      return;
+      this.cdr.detectChanges();
     }
-
-    if (data) {
-      this.reporteNinos = this.procesarDatos(data);
-    }
-
-    this.isLoading = false;
   }
 
   cargarMas() {
     this.limiteMostrar += 10;
+    this.cdr.detectChanges();
   }
 
   private procesarDatos(sesiones: any[]): MetricaNino[] {
@@ -90,9 +106,10 @@ export class AdminNinos implements OnInit {
 
     sesiones.forEach(sesion => {
       const ninoId = sesion.nino_id;
-      if (!ninoId || !sesion.ninos) return;
+      const ninoObj = Array.isArray(sesion.ninos) ? sesion.ninos[0] : sesion.ninos;
+      if (!ninoId || !ninoObj) return;
 
-      const nombreNino = sesion.ninos.nombres_apellidos;
+      const nombreNino = ninoObj.nombres_apellidos || 'Sin nombre';
 
       // Calcular duración de esta visita específica
       const ms = new Date(sesion.salida_estimada_at).getTime() - new Date(sesion.ingreso_at).getTime();
@@ -163,6 +180,7 @@ export class AdminNinos implements OnInit {
 
   toggleDetalle(nino: MetricaNino) {
     nino.mostrarDetalle = !nino.mostrarDetalle;
+    this.cdr.detectChanges();
   }
 
   obtenerFechaHace(dias: number): string {

@@ -24,7 +24,7 @@
           <div>
             <label class="block text-sm font-semibold text-gray-700">Cédula de Identidad / Pasaporte</label>
             <div class="mt-2 flex shadow-sm rounded-xl">
-              <input type="text" formControlName="tutorCedula" (blur)="onBlurCedula()"
+              <input type="text" formControlName="tutorCedula" maxlength="25" (blur)="onBlurCedula()"
                      class="flex-1 block w-full px-4 py-3 border border-gray-300 rounded-l-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
                      [ngClass]="{'border-red-300 bg-red-50': ingresoForm.get('tutorCedula')?.invalid && ingresoForm.get('tutorCedula')?.touched}"
                      placeholder="Ej. 1712345678 o Pasaporte"
