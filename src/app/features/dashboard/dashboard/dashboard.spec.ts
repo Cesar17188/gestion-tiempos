@@ -167,4 +167,24 @@ describe('Dashboard', () => {
     component.actualizarTiempos();
     expect(sesion.oculta).toBe(true);
   });
+
+  it('debería permitir a la anfitriona editar y guardar el monto a pagar en una sesión de juego', async () => {
+    await Promise.resolve();
+    const sesion = component.sesiones[0];
+    const updateSpy = vi.spyOn(supabaseMock.db(), 'update');
+
+    component.iniciarEdicionMonto(sesion);
+    expect(component.editandoMontoSesionId).toBe(sesion.id);
+    expect(component.montoEditadoValor).toBe(30);
+
+    component.onMontoInputChange({ target: { value: '12.50' } } as any);
+    await component.guardarMontoSesion(sesion);
+
+    expect(updateSpy).toHaveBeenCalledWith({
+      costo_base: 12.5,
+      costo_extra: 0
+    });
+    expect(sesion.costoTotal).toBe(12.5);
+    expect(component.editandoMontoSesionId).toBeNull();
+  });
 });

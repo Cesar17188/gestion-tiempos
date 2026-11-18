@@ -39,6 +39,7 @@ describe('AdminDescargas', () => {
         id: 'sesion-reciente',
         nino_id: 'nino-1',
         tutor_id: 'tutor-2',
+        tipo_pago: 'Produbanco',
         ingreso_at: '2026-11-10T16:05:00.000Z',
         salida_estimada_at: '2026-11-10T16:35:00.000Z',
         estado: 'FINALIZADO',
@@ -82,6 +83,8 @@ describe('AdminDescargas', () => {
     const sesionAntigua = component.baseCompletaAplanada.find(s => s.ID_Sesion === 'sesion-antigua');
 
     expect(sesionReciente.Tutor_Responsable).toBe('Abuela Elena');
+    expect(sesionReciente.Tipo_Pago).toBe('Produbanco');
+    expect(component.columnasExcel).toContain('Tipo_Pago');
     expect(sesionAntigua.Tutor_Responsable).toBe('Mamá Laura');
   });
 });

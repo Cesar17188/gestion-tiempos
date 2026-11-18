@@ -85,8 +85,16 @@ export class Ingreso implements OnInit {
 
     // Configuración de la Sesión (Aplica a todos los niños del formulario)
     tiempoMinutos: ['30', [Validators.required]], // Por defecto 30 minutos
-    adultosExtra: ['0', [Validators.min(0)]]
+    adultosExtra: ['0', [Validators.min(0)]],
+    montoAPagar: [null, [Validators.min(0)]]
   });
+
+  obtenerCostoBasePorDefecto(): number {
+    const minutos = parseInt(this.ingresoForm.get('tiempoMinutos')?.value || '30', 10);
+    return minutos === 60
+      ? (Number(this.precioBase ?? 7) + Number(this.precioPaqueteExtra ?? 3))
+      : Number(this.precioBase ?? 7);
+  }
 
   async ngOnInit() {
     await this.cargarTarifaAdultoExtra();
@@ -873,9 +881,12 @@ export class Ingreso implements OnInit {
         
         const adultosAdicionales = parseInt(values.adultosExtra || '0', 10);
         const costoExtraInicial = adultosAdicionales * Number(this.precioAdultoExtra ?? 2);
-        const costoBase = minutosAAgregar === 60 
-          ? (Number(this.precioBase ?? 7) + Number(this.precioPaqueteExtra ?? 3))
-          : Number(this.precioBase ?? 7);
+        const tieneMontoPersonalizado = values.montoAPagar !== null && values.montoAPagar !== undefined && String(values.montoAPagar).trim() !== '' && !isNaN(Number(values.montoAPagar));
+        const costoBase = tieneMontoPersonalizado
+          ? Math.max(0, Number(values.montoAPagar))
+          : (minutosAAgregar === 60 
+              ? (Number(this.precioBase ?? 7) + Number(this.precioPaqueteExtra ?? 3))
+              : Number(this.precioBase ?? 7));
 
         const sesionBasePayload: any = {
           nino_id: ninoIdFinal,

@@ -46,7 +46,7 @@ export class AdminDescargas implements OnInit {
   columnasExcel = [
     'ID_Sesion', 'Fecha_Ingreso', 'Hora_Ingreso', 'Dia_Semana', 'Hora_Salida_Estimada', 'Estado_Sesion',
     'Nino', 'Edad_Nino', 'Tutor_Responsable', 'Parentesco', 'Tipo_Pase', 'Observaciones_Tipo_Pase', 'Observaciones', 
-    'Costo_Base', 'Minutos_Extra', 'Costo_Extra', 'Total_Pagado',
+    'Costo_Base', 'Minutos_Extra', 'Costo_Extra', 'Total_Pagado', 'Tipo_Pago',
     'Registrado_Por', 'Tipologia', 'Observaciones_Tipologia', 'Requiere_Factura', 'Identificacion', 'Razon_Social',
     'Email_Factura', 'Estado_Factura', 'Clave_Acceso_SRI'
   ];
@@ -80,6 +80,7 @@ export class AdminDescargas implements OnInit {
       minutos_extra: [0, [Validators.required, Validators.min(0)]],
       costo_extra: [0, [Validators.required, Validators.min(0)]],
       adultos_adicionales: [0, [Validators.required, Validators.min(0)]],
+      tipo_pago: [''],
       tipologia: [''],
       observaciones_tipologia: [''],
       nino_nombre: ['', Validators.required],
@@ -122,6 +123,7 @@ export class AdminDescargas implements OnInit {
       (f.Observaciones_Tipo_Pase && f.Observaciones_Tipo_Pase.toLowerCase().includes(q)) ||
       (f.Identificacion && f.Identificacion.toLowerCase().includes(q)) ||
       (f.Razon_Social && f.Razon_Social.toLowerCase().includes(q)) ||
+      (f.Tipo_Pago && f.Tipo_Pago.toLowerCase().includes(q)) ||
       (f.Tipologia && f.Tipologia.toLowerCase().includes(q)) ||
       (f.ID_Sesion && f.ID_Sesion.toLowerCase().includes(q))
     );
@@ -195,10 +197,13 @@ export class AdminDescargas implements OnInit {
       }
 
       let tutorSesionMap: Record<string, string> = {};
+      let pagoSesionMap: Record<string, string> = {};
       if (typeof window !== 'undefined' && window.localStorage) {
         try {
           const rawMap = localStorage.getItem('vp_sesion_tutor_map');
           if (rawMap) tutorSesionMap = JSON.parse(rawMap);
+          const rawPagoMap = localStorage.getItem('vp_sesion_pago_map');
+          if (rawPagoMap) pagoSesionMap = JSON.parse(rawPagoMap);
         } catch (e) {
           // Ignorar si localStorage no está disponible
         }
@@ -318,6 +323,7 @@ export class AdminDescargas implements OnInit {
             Minutos_Extra: item.minutos_extra,
             Costo_Extra: item.costo_extra,
             Total_Pagado: Number(item.costo_base) + Number(item.costo_extra),
+            Tipo_Pago: item.tipo_pago || pagoSesionMap[item.id] || '-',
             Registrado_Por: item.perfiles?.nombre || 'Desconocido',
             Tipologia: item.tipologia || '-',
             Observaciones_Tipologia: item.observaciones_tipologia || '-',
@@ -346,6 +352,7 @@ export class AdminDescargas implements OnInit {
       minutos_extra: fila.Minutos_Extra ?? 0,
       costo_extra: fila.Costo_Extra ?? 0,
       adultos_adicionales: fila.Adultos_Adicionales ?? 0,
+      tipo_pago: fila.Tipo_Pago === '-' ? '' : (fila.Tipo_Pago || ''),
       tipologia: fila.Tipologia === '-' ? '' : fila.Tipologia,
       observaciones_tipologia: fila.Observaciones_Tipologia === '-' ? '' : fila.Observaciones_Tipologia,
       nino_nombre: fila.Nino === 'N/A' ? '' : fila.Nino,
@@ -397,9 +404,35 @@ export class AdminDescargas implements OnInit {
         observaciones_tipologia: val.observaciones_tipologia ? val.observaciones_tipologia.trim() : null
       };
 
-      const { error: sesionError } = await this.supabase.from('sesiones_juego')
-        .update(sesionPayload)
+      const tipoPagoVal = val.tipo_pago ? val.tipo_pago.trim() : null;
+      let { error: sesionError } = await this.supabase.from('sesiones_juego')
+        .update({
+          ...sesionPayload,
+          tipo_pago: tipoPagoVal
+        })
         .eq('id', sesionId);
+
+      if (sesionError && sesionError.message && sesionError.message.includes('tipo_pago')) {
+        const fallbackRes = await this.supabase.from('sesiones_juego')
+          .update(sesionPayload)
+          .eq('id', sesionId);
+        sesionError = fallbackRes.error;
+      }
+
+      if (typeof window !== 'undefined' && window.localStorage && sesionId) {
+        try {
+          const rawPagoMap = localStorage.getItem('vp_sesion_pago_map');
+          const pagoMap = rawPagoMap ? JSON.parse(rawPagoMap) : {};
+          if (tipoPagoVal) {
+            pagoMap[sesionId] = tipoPagoVal;
+          } else {
+            delete pagoMap[sesionId];
+          }
+          localStorage.setItem('vp_sesion_pago_map', JSON.stringify(pagoMap));
+        } catch (e) {
+          // Ignorar
+        }
+      }
 
       if (sesionError) throw sesionError;
 

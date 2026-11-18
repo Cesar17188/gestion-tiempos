@@ -51,6 +51,7 @@ export interface SesionJuego {
   oculta?: boolean;
   tipologia?: string;
   observacionesTipologia?: string;
+  tipoPago?: string;
   fechaObservacionesIngresadas?: Date;
   tiempoCierreRestanteStr?: string;
 }
@@ -146,6 +147,11 @@ export class Dashboard implements OnInit, OnDestroy {
   // Variables para Actualización de Niño
   showUpdateNinoDialog = false;
   isSavingNino = false;
+
+  // Variables para Edición de Monto a Pagar en la Tarjeta de Sesión
+  editandoMontoSesionId: string | null = null;
+  montoEditadoValor: number = 0;
+  isSavingMonto = false;
 
   tutorUpdateForm: FormGroup = this.fb.group({
     tutorNombre: ['', [Validators.required, Validators.minLength(4)]],
@@ -437,10 +443,13 @@ export class Dashboard implements OnInit, OnDestroy {
     }
 
     let tutorSesionMap: Record<string, string> = {};
+    let pagoSesionMap: Record<string, string> = {};
     if (isPlatformBrowser(this.platformId)) {
       try {
         const rawMap = localStorage.getItem('vp_sesion_tutor_map');
         if (rawMap) tutorSesionMap = JSON.parse(rawMap);
+        const rawPagoMap = localStorage.getItem('vp_sesion_pago_map');
+        if (rawPagoMap) pagoSesionMap = JSON.parse(rawPagoMap);
       } catch (e) {
         // Ignorar
       }
@@ -509,6 +518,7 @@ export class Dashboard implements OnInit, OnDestroy {
           costoTotal: costoBaseVal + costoExtraVal,
           tipologia: item.tipologia || '',
           observacionesTipologia: item.observaciones_tipologia || '',
+          tipoPago: item.tipo_pago || pagoSesionMap[item.id] || sesionPrevia?.tipoPago || '',
           fechaObservacionesIngresadas: fechaObs,
           tiempoCierreRestanteStr: sesionPrevia?.tiempoCierreRestanteStr || ''
         };
@@ -922,6 +932,100 @@ export class Dashboard implements OnInit, OnDestroy {
     }
   }
 
+
+  // EDICIÓN DE MONTO A PAGAR EN LA SESIÓN
+  iniciarEdicionMonto(sesion: SesionJuego) {
+    this.editandoMontoSesionId = sesion.id;
+    this.montoEditadoValor = Number((sesion.costoTotal || 0).toFixed(2));
+    this.cdr.detectChanges();
+  }
+
+  cancelarEdicionMonto() {
+    this.editandoMontoSesionId = null;
+    this.isSavingMonto = false;
+    this.cdr.detectChanges();
+  }
+
+  onMontoInputChange(event: Event) {
+    const val = parseFloat((event.target as HTMLInputElement).value);
+    this.montoEditadoValor = isNaN(val) ? 0 : val;
+  }
+
+  async guardarMontoSesion(sesion: SesionJuego) {
+    if (this.isSavingMonto) return;
+    const nuevoTotal = Math.max(0, Number(Number(this.montoEditadoValor || 0).toFixed(2)));
+
+    let nuevoCostoBase = nuevoTotal;
+    let nuevoCostoExtra = Number(sesion.costoExtra || 0);
+
+    if (nuevoTotal >= nuevoCostoExtra) {
+      nuevoCostoBase = Number((nuevoTotal - nuevoCostoExtra).toFixed(2));
+    } else {
+      nuevoCostoBase = nuevoTotal;
+      nuevoCostoExtra = 0;
+    }
+
+    this.isSavingMonto = true;
+    this.cdr.detectChanges();
+
+    try {
+      const { error } = await this.supabaseService.db('sesiones_juego')
+        .update({
+          costo_base: nuevoCostoBase,
+          costo_extra: nuevoCostoExtra
+        })
+        .eq('id', sesion.id);
+
+      if (error) {
+        console.error('Error al actualizar monto de la sesión:', error);
+        this.mostrarToast('Hubo un error al actualizar el monto a pagar.', 'error');
+      } else {
+        sesion.costoBase = nuevoCostoBase;
+        sesion.costoExtra = nuevoCostoExtra;
+        sesion.costoTotal = nuevoTotal;
+        this.editandoMontoSesionId = null;
+        this.mostrarToast('Monto a pagar actualizado exitosamente.', 'success');
+      }
+    } catch (e) {
+      console.error('Error inesperado al guardar monto:', e);
+      this.mostrarToast('Hubo un error al guardar el monto.', 'error');
+    } finally {
+      this.isSavingMonto = false;
+      this.cdr.detectChanges();
+    }
+  }
+
+  // GUARDAR TIPO DE PAGO
+  async guardarTipoPago(sesion: SesionJuego, event: Event) {
+    const selectElement = event.target as HTMLSelectElement;
+    const tipoPago = selectElement.value;
+    if (!tipoPago) return;
+
+    sesion.tipoPago = tipoPago;
+
+    if (isPlatformBrowser(this.platformId)) {
+      try {
+        const rawPagoMap = localStorage.getItem('vp_sesion_pago_map');
+        const pagoMap = rawPagoMap ? JSON.parse(rawPagoMap) : {};
+        pagoMap[sesion.id] = tipoPago;
+        localStorage.setItem('vp_sesion_pago_map', JSON.stringify(pagoMap));
+      } catch (e) {
+        // Ignorar si localStorage no está disponible
+      }
+    }
+
+    const { error } = await this.supabaseService.db('sesiones_juego')
+      .update({ tipo_pago: tipoPago })
+      .eq('id', sesion.id);
+
+    if (error && !error.message?.includes('tipo_pago')) {
+      console.error('Error al guardar tipo de pago:', error);
+      this.mostrarToast('Hubo un error al guardar el tipo de pago.', 'error');
+    } else {
+      this.mostrarToast('Tipo de pago registrado exitosamente.', 'success');
+      this.cdr.detectChanges();
+    }
+  }
 
   // GUARDAR TIPOLOGÍA
   async guardarTipologia(sesion: SesionJuego, event: Event) {
@@ -1375,6 +1479,8 @@ export class Dashboard implements OnInit, OnDestroy {
       this.abrirDialogoActualizarTutor(sesion);
     } else if (value === 'nino') {
       this.abrirDialogoActualizarNino(sesion);
+    } else if (value === 'monto') {
+      this.iniciarEdicionMonto(sesion);
     }
     select.value = ''; // Reset
   }
