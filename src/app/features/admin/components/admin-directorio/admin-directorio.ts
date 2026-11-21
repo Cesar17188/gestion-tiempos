@@ -100,6 +100,7 @@ export class AdminDirectorio implements OnInit {
   // Modal Eliminar Adulto Responsable
   showDeleteTutorModal = false;
   tutorAEliminar: TutorConNinos | null = null;
+  eliminarTambienNinosDeTutor = false;
   isDeletingTutor = false;
 
   // Modal Editar Niño
@@ -117,6 +118,7 @@ export class AdminDirectorio implements OnInit {
   // Modal Eliminar Niño
   showDeleteNinoModal = false;
   ninoAEliminar: NinoResumen | NinoConSesionesYTutores | null = null;
+  eliminarTambienTutorDeNino = false;
   isDeletingNino = false;
 
   // Modal Añadir Niño a un Adulto Responsable
@@ -535,7 +537,9 @@ export class AdminDirectorio implements OnInit {
   }
 
   confirmarEliminarTutor(tutor: TutorConNinos) {
-    this.tutorAEliminar = tutor;
+    const tutorCompleto = this.listaTutoresConNinos.find(t => t.id === tutor.id) || tutor;
+    this.tutorAEliminar = tutorCompleto;
+    this.eliminarTambienNinosDeTutor = false;
     this.showDeleteTutorModal = true;
     this.cdr.detectChanges();
   }
@@ -543,6 +547,7 @@ export class AdminDirectorio implements OnInit {
   cerrarEliminarTutor() {
     this.showDeleteTutorModal = false;
     this.tutorAEliminar = null;
+    this.eliminarTambienNinosDeTutor = false;
     this.isDeletingTutor = false;
     this.cdr.detectChanges();
   }
@@ -554,6 +559,7 @@ export class AdminDirectorio implements OnInit {
     this.cdr.detectChanges();
 
     const tutorId = this.tutorAEliminar.id;
+    const ninosAsociados = this.tutorAEliminar.ninosRegistrados || [];
 
     try {
       // 1. Eliminar relaciones en ninos_tutores
@@ -561,19 +567,33 @@ export class AdminDirectorio implements OnInit {
         .delete()
         .eq('tutor_id', tutorId);
 
-      // 2. Desvincular tutor_id en sesiones_juego si existe la columna
+      // 2. Si el usuario marcó eliminar también a los niños vinculados a este adulto
+      if (this.eliminarTambienNinosDeTutor && ninosAsociados.length > 0) {
+        for (const nino of ninosAsociados) {
+          await this.supabase.db('ninos_tutores').delete().eq('nino_id', nino.id);
+          await this.supabase.db('sesiones_juego').delete().eq('nino_id', nino.id);
+          await this.supabase.db('ninos').delete().eq('id', nino.id);
+        }
+      }
+
+      // 3. Desvincular tutor_id en sesiones_juego si existe la columna
       await this.supabase.db('sesiones_juego')
         .update({ tutor_id: null })
         .eq('tutor_id', tutorId);
 
-      // 3. Eliminar el registro en tutores
+      // 4. Eliminar el registro en tutores
       const { error } = await this.supabase.db('tutores')
         .delete()
         .eq('id', tutorId);
 
       if (error) throw error;
 
-      this.mostrarToast('Adulto responsable eliminado correctamente.', 'success');
+      this.mostrarToast(
+        this.eliminarTambienNinosDeTutor
+          ? 'Adulto responsable y niño(s) vinculado(s) eliminados correctamente.'
+          : 'Adulto responsable eliminado correctamente.',
+        'success'
+      );
       this.cerrarEliminarTutor();
       await this.cargarDirectorioCompleto();
     } catch (err: any) {
@@ -646,7 +666,9 @@ export class AdminDirectorio implements OnInit {
   }
 
   confirmarEliminarNino(nino: NinoResumen | NinoConSesionesYTutores) {
-    this.ninoAEliminar = nino;
+    const ninoCompleto = this.listaNinosConSesiones.find(n => n.id === nino.id) || nino;
+    this.ninoAEliminar = ninoCompleto;
+    this.eliminarTambienTutorDeNino = false;
     this.showDeleteNinoModal = true;
     this.cdr.detectChanges();
   }
@@ -654,6 +676,7 @@ export class AdminDirectorio implements OnInit {
   cerrarEliminarNino() {
     this.showDeleteNinoModal = false;
     this.ninoAEliminar = null;
+    this.eliminarTambienTutorDeNino = false;
     this.isDeletingNino = false;
     this.cdr.detectChanges();
   }
@@ -665,6 +688,7 @@ export class AdminDirectorio implements OnInit {
     this.cdr.detectChanges();
 
     const ninoId = this.ninoAEliminar.id;
+    const tutoresAsociados: TutorConNinos[] = (this.ninoAEliminar as NinoConSesionesYTutores).tutoresRegistrados || [];
 
     try {
       // 1. Eliminar relaciones en ninos_tutores
@@ -684,7 +708,21 @@ export class AdminDirectorio implements OnInit {
 
       if (error) throw error;
 
-      this.mostrarToast('Niño(a) eliminado permanentemente del sistema.', 'success');
+      // 4. Si se marcó eliminar también al adulto responsable vinculado
+      if (this.eliminarTambienTutorDeNino && tutoresAsociados.length > 0) {
+        for (const tut of tutoresAsociados) {
+          await this.supabase.db('ninos_tutores').delete().eq('tutor_id', tut.id);
+          await this.supabase.db('sesiones_juego').update({ tutor_id: null }).eq('tutor_id', tut.id);
+          await this.supabase.db('tutores').delete().eq('id', tut.id);
+        }
+      }
+
+      this.mostrarToast(
+        this.eliminarTambienTutorDeNino
+          ? 'Niño(a) y adulto(s) responsable(s) eliminados permanentemente.'
+          : 'Niño(a) eliminado permanentemente del sistema.',
+        'success'
+      );
       this.cerrarEliminarNino();
       await this.cargarDirectorioCompleto();
     } catch (err: any) {

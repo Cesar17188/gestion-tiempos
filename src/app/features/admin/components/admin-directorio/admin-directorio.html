@@ -447,32 +447,53 @@
   }
 
   <!-- ========================================================================= -->
-  <!-- MODAL ELIMINAR ADULTO RESPONSABLE                                         -->
+  <!-- MODAL DE CONFIRMACIÓN DE SEGURIDAD: ELIMINAR ADULTO RESPONSABLE           -->
   <!-- ========================================================================= -->
   @if (showDeleteTutorModal && tutorAEliminar) {
     <div class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 backdrop-blur-xs p-4">
       <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-auto overflow-hidden border border-red-100 p-6 space-y-5">
-        <div class="flex items-center gap-3">
-          <span class="h-10 w-10 bg-red-100 text-red-600 rounded-xl flex items-center justify-center font-bold">⚠️</span>
+        <div class="flex items-start gap-3.5">
+          <span class="h-11 w-11 bg-red-100 text-red-600 rounded-2xl flex items-center justify-center font-bold shrink-0">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+            </svg>
+          </span>
           <div>
-            <h3 class="text-base font-bold text-gray-900">¿Eliminar Adulto Responsable?</h3>
-            <p class="text-xs text-gray-500">Esta acción eliminará el registro de la base de datos.</p>
+            <h3 class="text-base font-bold text-gray-900">Pregunta de Seguridad</h3>
+            <p class="text-xs text-gray-600 mt-1 leading-relaxed">
+              ¿Está completamente seguro de que desea eliminar al adulto responsable <strong class="text-gray-900">{{ tutorAEliminar.nombres_apellidos }}</strong> del sistema?
+            </p>
           </div>
         </div>
 
-        <div class="p-3.5 bg-red-50 rounded-xl border border-red-100 text-xs text-red-900 space-y-1">
-          <p class="font-bold text-sm">{{ tutorAEliminar.nombres_apellidos }}</p>
-          <p>Cédula: {{ tutorAEliminar.cedula || 'S/N' }}</p>
+        <div class="p-3.5 bg-red-50 rounded-xl border border-red-100 text-xs text-red-900 space-y-1.5">
+          <p class="font-bold text-sm text-red-950">👤 {{ tutorAEliminar.nombres_apellidos }}</p>
+          <p>Cédula / ID: <span class="font-mono font-semibold">{{ tutorAEliminar.cedula || 'S/N' }}</span></p>
+          @if (tutorAEliminar.ninosRegistrados && tutorAEliminar.ninosRegistrados.length > 0) {
+            <div class="pt-1.5 border-t border-red-200/70">
+              <p class="font-semibold text-red-800">Niños registrados con este adulto ({{ tutorAEliminar.ninosRegistrados.length }}):</p>
+              <ul class="list-disc list-inside text-[11px] text-red-900 mt-0.5">
+                @for (n of tutorAEliminar.ninosRegistrados; track n.id) {
+                  <li>{{ n.nombres_apellidos }}</li>
+                }
+              </ul>
+              <label class="mt-2.5 flex items-center gap-2 cursor-pointer select-none bg-white/80 p-2 rounded-lg border border-red-200">
+                <input type="checkbox" [(ngModel)]="eliminarTambienNinosDeTutor" class="rounded text-red-600 focus:ring-red-500">
+                <span class="font-bold text-[11px] text-red-900">Eliminar también tanto al niño(a) como al adulto responsable</span>
+              </label>
+            </div>
+          }
+          <p class="text-red-700 font-semibold pt-1">⚠️ Esta acción es permanente y no se puede deshacer.</p>
         </div>
 
         <div class="flex justify-end gap-2.5">
           <button type="button" (click)="cerrarEliminarTutor()" [disabled]="isDeletingTutor"
             class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-semibold text-xs cursor-pointer">
-            Cancelar
+            No, Cancelar
           </button>
           <button type="button" (click)="ejecutarEliminarTutor()" [disabled]="isDeletingTutor"
-            class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold text-xs cursor-pointer disabled:opacity-50">
-            {{ isDeletingTutor ? 'Eliminando...' : 'Sí, Eliminar Adulto' }}
+            class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold text-xs cursor-pointer disabled:opacity-50 shadow-sm">
+            {{ isDeletingTutor ? 'Eliminando...' : 'Sí, Estoy Seguro de Eliminar' }}
           </button>
         </div>
       </div>
@@ -536,32 +557,53 @@
   }
 
   <!-- ========================================================================= -->
-  <!-- MODAL ELIMINAR NIÑO(A)                                                    -->
+  <!-- MODAL DE CONFIRMACIÓN DE SEGURIDAD: ELIMINAR NIÑO(A)                      -->
   <!-- ========================================================================= -->
   @if (showDeleteNinoModal && ninoAEliminar) {
     <div class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 backdrop-blur-xs p-4">
       <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-auto overflow-hidden border border-red-100 p-6 space-y-5">
-        <div class="flex items-center gap-3">
-          <span class="h-10 w-10 bg-red-100 text-red-600 rounded-xl flex items-center justify-center font-bold">⚠️</span>
+        <div class="flex items-start gap-3.5">
+          <span class="h-11 w-11 bg-red-100 text-red-600 rounded-2xl flex items-center justify-center font-bold shrink-0">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+            </svg>
+          </span>
           <div>
-            <h3 class="text-base font-bold text-gray-900">¿Eliminar Niño(a)?</h3>
-            <p class="text-xs text-gray-500">Se eliminará al niño(a) y sus vínculos de la base de datos.</p>
+            <h3 class="text-base font-bold text-gray-900">Pregunta de Seguridad</h3>
+            <p class="text-xs text-gray-600 mt-1 leading-relaxed">
+              ¿Está completamente seguro de que desea eliminar al niño(a) <strong class="text-gray-900">{{ ninoAEliminar.nombres_apellidos }}</strong> del sistema?
+            </p>
           </div>
         </div>
 
-        <div class="p-3.5 bg-red-50 rounded-xl border border-red-100 text-xs text-red-900 space-y-1">
-          <p class="font-bold text-sm">👶 {{ ninoAEliminar.nombres_apellidos }}</p>
-          <p>Fecha de nacimiento: {{ ninoAEliminar.fecha_nacimiento || 'Sin fecha' }}</p>
+        <div class="p-3.5 bg-red-50 rounded-xl border border-red-100 text-xs text-red-900 space-y-1.5">
+          <p class="font-bold text-sm text-red-950">👶 {{ ninoAEliminar.nombres_apellidos }}</p>
+          <p>Fecha de nacimiento: <span class="font-semibold">{{ ninoAEliminar.fecha_nacimiento || 'Sin fecha' }}</span></p>
+          @if ($any(ninoAEliminar).tutoresRegistrados && $any(ninoAEliminar).tutoresRegistrados.length > 0) {
+            <div class="pt-1.5 border-t border-red-200/70">
+              <p class="font-semibold text-red-800">Adulto(s) responsable(s) vinculado(s):</p>
+              <ul class="list-disc list-inside text-[11px] text-red-900 mt-0.5">
+                @for (t of $any(ninoAEliminar).tutoresRegistrados; track t.id) {
+                  <li>{{ t.nombres_apellidos }} ({{ t.parentesco || 'Tutor' }})</li>
+                }
+              </ul>
+              <label class="mt-2.5 flex items-center gap-2 cursor-pointer select-none bg-white/80 p-2 rounded-lg border border-red-200">
+                <input type="checkbox" [(ngModel)]="eliminarTambienTutorDeNino" class="rounded text-red-600 focus:ring-red-500">
+                <span class="font-bold text-[11px] text-red-900">Eliminar también tanto al niño(a) como al adulto responsable</span>
+              </label>
+            </div>
+          }
+          <p class="text-red-700 font-semibold pt-1">⚠️ Esta acción es permanente y no se puede deshacer.</p>
         </div>
 
         <div class="flex justify-end gap-2.5">
           <button type="button" (click)="cerrarEliminarNino()" [disabled]="isDeletingNino"
             class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-semibold text-xs cursor-pointer">
-            Cancelar
+            No, Cancelar
           </button>
           <button type="button" (click)="ejecutarEliminarNino()" [disabled]="isDeletingNino"
-            class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold text-xs cursor-pointer disabled:opacity-50">
-            {{ isDeletingNino ? 'Eliminando...' : 'Sí, Eliminar Niño(a)' }}
+            class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold text-xs cursor-pointer disabled:opacity-50 shadow-sm">
+            {{ isDeletingNino ? 'Eliminando...' : 'Sí, Estoy Seguro de Eliminar' }}
           </button>
         </div>
       </div>
