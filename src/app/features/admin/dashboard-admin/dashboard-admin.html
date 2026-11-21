@@ -39,6 +39,11 @@
                     class="py-2.5 px-4 border-b-2 text-sm font-medium transition-all">
                     Fidelidad y Frecuencia de Niños
                 </button>
+                <button (click)="pestanaActiva = 'directorio'"
+                    [ngClass]="{'border-indigo-600 text-indigo-600 font-bold': pestanaActiva === 'directorio', 'border-transparent text-gray-500 hover:text-gray-700': pestanaActiva !== 'directorio'}"
+                    class="py-2.5 px-4 border-b-2 text-sm font-medium transition-all whitespace-nowrap">
+                    👨‍👩‍👧‍👦 Adultos y Niños
+                </button>
                 <button (click)="pestanaActiva = 'config'"
                     [ngClass]="{'border-indigo-600 text-indigo-600 font-bold': pestanaActiva === 'config', 'border-transparent text-gray-500 hover:text-gray-700': pestanaActiva !== 'config'}"
                     class="py-2.5 px-4 border-b-2 text-sm font-medium transition-all">
@@ -75,6 +80,10 @@
             } @else if (pestanaActiva === 'ninos') {
 
             <app-admin-ninos></app-admin-ninos>
+
+            } @else if (pestanaActiva === 'directorio') {
+
+            <app-admin-directorio></app-admin-directorio>
 
             } @else if (pestanaActiva === 'config') {
 

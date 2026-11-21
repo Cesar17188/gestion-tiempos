@@ -10,10 +10,11 @@ import { AdminTabla } from '../components/admin-tabla/admin-tabla';
 import { AdminNinos } from '../components/admin-ninos/admin-ninos';
 import { AdminConfig } from '../components/admin-config/admin-config';
 import { AdminDescargas } from '../components/admin-descargas/admin-descargas';
+import { AdminDirectorio } from '../components/admin-directorio/admin-directorio';
 
 @Component({
   selector: 'app-dashboard-admin',
-  imports: [CommonModule, RouterModule, AdminMetricas, AdminFiltros, AdminTabla, AdminNinos, AdminConfig, AdminDescargas],
+  imports: [CommonModule, RouterModule, AdminMetricas, AdminFiltros, AdminTabla, AdminNinos, AdminConfig, AdminDescargas, AdminDirectorio],
   templateUrl: './dashboard-admin.html',
   styleUrl: './dashboard-admin.css',
 })
@@ -25,7 +26,7 @@ export class DashboardAdmin implements OnInit {
   fechaInicio: string = '';
   fechaFin: string = '';
   encargadoFiltro: string = 'TODOS';
-  pestanaActiva: 'general' | 'ninos' | 'config' | 'descargas' = 'general';
+  pestanaActiva: 'general' | 'ninos' | 'directorio' | 'config' | 'descargas' = 'general';
 
   listaEncargados: any[] = [];
   totalRecaudado: number = 0;

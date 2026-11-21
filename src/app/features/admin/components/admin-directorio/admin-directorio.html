@@ -1,0 +1,777 @@
+<div class="space-y-8">
+
+  <!-- Barra Superior de Control y Selector de Vistas -->
+  <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+    <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+      <div>
+        <h3 class="text-lg font-bold text-gray-800">Gestión de Adultos Responsables y Niños/Niñas</h3>
+        <p class="text-xs text-gray-500 mt-0.5">
+          Visualiza, edita o elimina registros de adultos responsables, niños vinculados y el historial de quién trajo a cada niño por sesión.
+        </p>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-2">
+        <button type="button" (click)="cambiarVista('ambas')"
+          [ngClass]="vistaActiva === 'ambas' ? 'bg-indigo-600 text-white shadow-sm' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
+          class="px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer">
+          Ver Ambas Tablas
+        </button>
+        <button type="button" (click)="cambiarVista('tutores')"
+          [ngClass]="vistaActiva === 'tutores' ? 'bg-indigo-600 text-white shadow-sm' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
+          class="px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5">
+          <span>1. Adultos Responsables</span>
+          <span class="px-2 py-0.5 rounded-full text-[10px]" [ngClass]="vistaActiva === 'tutores' ? 'bg-indigo-700 text-white' : 'bg-gray-200 text-gray-700'">{{ listaTutoresConNinos.length }}</span>
+        </button>
+        <button type="button" (click)="cambiarVista('ninos')"
+          [ngClass]="vistaActiva === 'ninos' ? 'bg-indigo-600 text-white shadow-sm' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
+          class="px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5">
+          <span>2. Niños y Sesiones</span>
+          <span class="px-2 py-0.5 rounded-full text-[10px]" [ngClass]="vistaActiva === 'ninos' ? 'bg-indigo-700 text-white' : 'bg-gray-200 text-gray-700'">{{ listaNinosConSesiones.length }}</span>
+        </button>
+        <button type="button" (click)="cargarDirectorioCompleto()" [disabled]="isLoading"
+          class="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-colors cursor-pointer disabled:opacity-50">
+          Actualizar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  @if (isLoading) {
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-12 flex justify-center items-center">
+      <svg class="animate-spin h-8 w-8 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+      </svg>
+    </div>
+  } @else {
+
+    <!-- ========================================================================= -->
+    <!-- TABLA 1: ADULTOS RESPONSABLES Y LOS NIÑOS/NIÑAS REGISTRADOS A ÉL          -->
+    <!-- ========================================================================= -->
+    @if (vistaActiva === 'ambas' || vistaActiva === 'tutores') {
+      <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-5">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-gray-100 pb-4">
+          <div class="flex items-center gap-3">
+            <span class="h-8 w-8 bg-indigo-100 text-indigo-600 rounded-lg flex items-center justify-center font-bold text-sm">1</span>
+            <div>
+              <h4 class="text-base font-bold text-gray-800">Adultos Responsables y Niños/Niñas Registrados</h4>
+              <p class="text-xs text-gray-500">Mostrando {{ tutoresFiltrados.length }} de {{ listaTutoresConNinos.length }} adultos responsables</p>
+            </div>
+          </div>
+
+          <div class="relative w-full sm:w-80">
+            <input type="text" [(ngModel)]="terminoBusquedaTutor"
+              placeholder="Buscar adulto, cédula, teléfono o niño..."
+              class="w-full text-xs rounded-xl border-gray-300 shadow-2xs focus:border-indigo-500 focus:ring-indigo-500 py-2 pl-8 pr-3 border bg-gray-50/70">
+            <svg class="w-4 h-4 text-gray-400 absolute left-2.5 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+            </svg>
+          </div>
+        </div>
+
+        <div class="border border-gray-100 rounded-xl overflow-hidden shadow-inner">
+          <div class="overflow-x-auto max-h-115">
+            <table class="w-full text-left text-xs text-gray-600">
+              <thead class="text-gray-700 bg-gray-50 uppercase font-bold border-b border-gray-100 sticky top-0 z-10">
+                <tr>
+                  <th class="px-4 py-3">Adulto Responsable</th>
+                  <th class="px-4 py-3">Cédula / ID</th>
+                  <th class="px-4 py-3">Parentesco</th>
+                  <th class="px-4 py-3">Contacto / Sector</th>
+                  <th class="px-4 py-3">Tipo de Pase</th>
+                  <th class="px-4 py-3">Niños y Niñas Registrados a este Adulto</th>
+                  <th class="px-4 py-3 text-center sticky right-0 bg-gray-50 z-20">Acciones Adulto</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-100">
+                @for (tutor of tutoresFiltrados; track tutor.id) {
+                  <tr class="hover:bg-slate-50/70 bg-white transition-colors align-top">
+                    <td class="px-4 py-3.5">
+                      <div class="font-bold text-gray-900">{{ tutor.nombres_apellidos }}</div>
+                      @if (tutor.alias) {
+                        <div class="text-[11px] text-indigo-600 font-medium">Alias: "{{ tutor.alias }}"</div>
+                      }
+                    </td>
+                    <td class="px-4 py-3.5 font-mono text-gray-700">{{ tutor.cedula || 'S/N' }}</td>
+                    <td class="px-4 py-3.5">{{ tutor.parentesco || '-' }}</td>
+                    <td class="px-4 py-3.5 space-y-0.5">
+                      @if (tutor.whatsapp) {
+                        <div class="font-mono text-gray-800">📱 {{ tutor.whatsapp }}</div>
+                      }
+                      @if (tutor.correo) {
+                        <div class="text-gray-500">✉️ {{ tutor.correo }}</div>
+                      }
+                      @if (tutor.sector) {
+                        <div class="text-gray-400">📍 {{ tutor.sector }}</div>
+                      }
+                    </td>
+                    <td class="px-4 py-3.5">
+                      @if (tutor.tipo_pase) {
+                        <span class="px-2 py-0.5 rounded-md font-semibold text-[11px] bg-indigo-50 text-indigo-700 border border-indigo-100">
+                          {{ tutor.tipo_pase }}
+                        </span>
+                      } @else {
+                        <span class="text-gray-400">-</span>
+                      }
+                      @if (tutor.observaciones_tipo_pase) {
+                        <div class="text-[11px] text-gray-500 mt-1 max-w-48 truncate" [title]="tutor.observaciones_tipo_pase">
+                          {{ tutor.observaciones_tipo_pase }}
+                        </div>
+                      }
+                    </td>
+                    <td class="px-4 py-3.5">
+                      <div class="flex flex-wrap items-center gap-1.5">
+                        @for (nino of tutor.ninosRegistrados; track nino.id) {
+                          <div class="inline-flex items-center gap-1.5 bg-pink-50/80 border border-pink-200 text-pink-900 px-2.5 py-1 rounded-lg text-xs">
+                            <span class="font-bold">{{ nino.nombres_apellidos }}</span>
+                            <span class="text-[10px] text-pink-600">({{ nino.edad }})</span>
+                            <button type="button" (click)="abrirEditarNino(nino)" title="Editar niño(a)"
+                              class="text-indigo-600 hover:text-indigo-900 p-0.5 rounded hover:bg-pink-100 transition-colors cursor-pointer">
+                              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                              </svg>
+                            </button>
+                            <button type="button" (click)="confirmarEliminarNino(nino)" title="Eliminar niño(a)"
+                              class="text-red-500 hover:text-red-800 p-0.5 rounded hover:bg-pink-100 transition-colors cursor-pointer">
+                              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                              </svg>
+                            </button>
+                          </div>
+                        }
+                        <button type="button" (click)="abrirAgregarNinoATutor(tutor)" title="Añadir un niño a este adulto responsable"
+                          class="inline-flex items-center gap-1 px-2.5 py-1 bg-pink-600 hover:bg-pink-700 text-white rounded-lg text-[11px] font-bold transition-colors cursor-pointer shadow-2xs">
+                          <span>+ Añadir niño</span>
+                        </button>
+                      </div>
+                    </td>
+                    <td class="px-4 py-3.5 text-center sticky right-0 bg-white/95 backdrop-blur-xs z-10 border-l border-gray-100">
+                      <div class="flex items-center justify-center gap-1.5">
+                        <button type="button" (click)="abrirAgregarNinoATutor(tutor)" title="Añadir niño a este adulto responsable"
+                          class="p-1.5 text-pink-600 hover:text-pink-900 bg-pink-50 hover:bg-pink-100 rounded-lg transition-colors cursor-pointer">
+                          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                          </svg>
+                        </button>
+                        <button type="button" (click)="abrirEditarTutor(tutor)" title="Editar adulto responsable"
+                          class="p-1.5 text-indigo-600 hover:text-indigo-900 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors cursor-pointer">
+                          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                          </svg>
+                        </button>
+                        <button type="button" (click)="confirmarEliminarTutor(tutor)" title="Eliminar adulto responsable"
+                          class="p-1.5 text-red-600 hover:text-red-900 bg-red-50 hover:bg-red-100 rounded-lg transition-colors cursor-pointer">
+                          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                          </svg>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                } @empty {
+                  <tr>
+                    <td colspan="7" class="px-4 py-8 text-center text-gray-400 text-sm">
+                      No se encontraron adultos responsables con ese criterio de búsqueda.
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- ========================================================================= -->
+    <!-- TABLA 2: NIÑOS/NIÑAS Y LOS ADULTOS RESPONSABLES QUE LO TRAJERON A SESIÓN  -->
+    <!-- ========================================================================= -->
+    @if (vistaActiva === 'ambas' || vistaActiva === 'ninos') {
+      <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-5">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-gray-100 pb-4">
+          <div class="flex items-center gap-3">
+            <span class="h-8 w-8 bg-pink-100 text-pink-600 rounded-lg flex items-center justify-center font-bold text-sm">2</span>
+            <div>
+              <h4 class="text-base font-bold text-gray-800">Niños/Niñas y Adultos Responsables por Sesión</h4>
+              <p class="text-xs text-gray-500">Mostrando {{ ninosFiltrados.length }} de {{ listaNinosConSesiones.length }} niños registrados</p>
+            </div>
+          </div>
+
+          <div class="relative w-full sm:w-80">
+            <input type="text" [(ngModel)]="terminoBusquedaNino"
+              placeholder="Buscar niño, alias, código o adulto..."
+              class="w-full text-xs rounded-xl border-gray-300 shadow-2xs focus:border-indigo-500 focus:ring-indigo-500 py-2 pl-8 pr-3 border bg-gray-50/70">
+            <svg class="w-4 h-4 text-gray-400 absolute left-2.5 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+            </svg>
+          </div>
+        </div>
+
+        <div class="border border-gray-100 rounded-xl overflow-hidden shadow-inner">
+          <div class="overflow-x-auto max-h-115">
+            <table class="w-full text-left text-xs text-gray-600">
+              <thead class="text-gray-700 bg-gray-50 uppercase font-bold border-b border-gray-100 sticky top-0 z-10">
+                <tr>
+                  <th class="px-4 py-3">Niño / Niña</th>
+                  <th class="px-4 py-3">Edad / Nacimiento</th>
+                  <th class="px-4 py-3">Notas / Restricciones</th>
+                  <th class="px-4 py-3">Adultos Responsables Vinculados</th>
+                  <th class="px-4 py-3">Adulto Responsable que lo trajo en cada Sesión</th>
+                  <th class="px-4 py-3 text-center sticky right-0 bg-gray-50 z-20">Acciones Niño</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-100">
+                @for (nino of ninosFiltrados; track nino.id) {
+                  <tr class="hover:bg-slate-50/70 bg-white transition-colors align-top">
+                    <td class="px-4 py-3.5">
+                      <div class="font-bold text-gray-900">{{ nino.nombres_apellidos }}</div>
+                      @if (nino.alias) {
+                        <div class="text-[11px] text-pink-600 font-medium">Diminutivo: "{{ nino.alias }}"</div>
+                      }
+                      @if (nino.codigo_especifico) {
+                        <div class="text-[10px] font-mono text-gray-400">Cód: {{ nino.codigo_especifico }}</div>
+                      }
+                    </td>
+                    <td class="px-4 py-3.5">
+                      <div class="font-semibold text-gray-800">{{ nino.edad }}</div>
+                      <div class="text-[11px] text-gray-400">{{ nino.fecha_nacimiento || 'Sin fecha' }}</div>
+                    </td>
+                    <td class="px-4 py-3.5 max-w-48">
+                      @if (nino.notas) {
+                        <span class="text-gray-700">{{ nino.notas }}</span>
+                      } @else {
+                        <span class="text-gray-400">-</span>
+                      }
+                    </td>
+                    <td class="px-4 py-3.5">
+                      <div class="flex flex-wrap items-center gap-1.5">
+                        @for (tut of nino.tutoresRegistrados; track tut.id) {
+                          <div class="inline-flex items-center gap-1.5 bg-indigo-50/80 border border-indigo-200 text-indigo-900 px-2.5 py-1 rounded-lg text-xs">
+                            <span class="font-bold">{{ tut.nombres_apellidos }}</span>
+                            @if (tut.parentesco) {
+                              <span class="text-[10px] text-indigo-600">({{ tut.parentesco }})</span>
+                            }
+                            <button type="button" (click)="abrirEditarTutor(tut)" title="Editar adulto responsable"
+                              class="text-indigo-600 hover:text-indigo-900 p-0.5 rounded hover:bg-indigo-100 transition-colors cursor-pointer">
+                              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                              </svg>
+                            </button>
+                            <button type="button" (click)="confirmarEliminarTutor(tut)" title="Eliminar adulto responsable"
+                              class="text-red-500 hover:text-red-800 p-0.5 rounded hover:bg-indigo-100 transition-colors cursor-pointer">
+                              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                              </svg>
+                            </button>
+                          </div>
+                        }
+                        <button type="button" (click)="abrirAgregarTutorANino(nino)" title="Añadir un adulto responsable a este niño(a)"
+                          class="inline-flex items-center gap-1 px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-[11px] font-bold transition-colors cursor-pointer shadow-2xs">
+                          <span>+ Añadir adulto</span>
+                        </button>
+                      </div>
+                    </td>
+                    <td class="px-4 py-3.5">
+                      @if (nino.sesionesHistorial.length > 0) {
+                        <div class="space-y-1.5">
+                          @for (ses of (nino.mostrarTodasSesiones ? nino.sesionesHistorial : (nino.sesionesHistorial | slice:0:3)); track ses.sesionId) {
+                            <div class="flex items-center justify-between gap-2 bg-slate-50 border border-slate-200/80 rounded-lg px-2.5 py-1.5">
+                              <div class="flex items-center gap-2 flex-wrap">
+                                <span class="font-mono text-[11px] text-slate-500">{{ ses.fechaIngreso }} {{ ses.horaIngreso }}</span>
+                                <span class="text-slate-400">→</span>
+                                <span class="font-bold text-slate-800">{{ ses.tutorNombre }}</span>
+                                @if (ses.tutorParentesco && ses.tutorParentesco !== '-') {
+                                  <span class="text-[10px] bg-white px-1.5 py-0.5 rounded border border-slate-200 text-slate-600">{{ ses.tutorParentesco }}</span>
+                                }
+                              </div>
+                              @if (ses.tutorId) {
+                                <button type="button" (click)="abrirEditarTutorPorId(ses.tutorId)" title="Editar este adulto responsable"
+                                  class="text-indigo-600 hover:text-indigo-800 p-0.5 rounded hover:bg-slate-200/60 transition-colors cursor-pointer shrink-0">
+                                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                  </svg>
+                                </button>
+                              }
+                            </div>
+                          }
+                          @if (nino.sesionesHistorial.length > 3) {
+                            <button type="button" (click)="toggleSesionesNino(nino)"
+                              class="text-[11px] font-bold text-indigo-600 hover:text-indigo-800 cursor-pointer">
+                              {{ nino.mostrarTodasSesiones ? 'Ver menos sesiones' : 'Ver todas las sesiones (' + nino.sesionesHistorial.length + ')' }}
+                            </button>
+                          }
+                        </div>
+                      } @else {
+                        <span class="text-gray-400 italic">Sin sesiones registradas</span>
+                      }
+                    </td>
+                    <td class="px-4 py-3.5 text-center sticky right-0 bg-white/95 backdrop-blur-xs z-10 border-l border-gray-100">
+                      <div class="flex items-center justify-center gap-1.5">
+                        <button type="button" (click)="abrirAgregarTutorANino(nino)" title="Añadir adulto responsable a este niño(a)"
+                          class="p-1.5 text-indigo-600 hover:text-indigo-900 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors cursor-pointer">
+                          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                          </svg>
+                        </button>
+                        <button type="button" (click)="abrirEditarNino(nino)" title="Editar niño(a)"
+                          class="p-1.5 text-indigo-600 hover:text-indigo-900 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors cursor-pointer">
+                          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                          </svg>
+                        </button>
+                        <button type="button" (click)="confirmarEliminarNino(nino)" title="Eliminar niño(a)"
+                          class="p-1.5 text-red-600 hover:text-red-900 bg-red-50 hover:bg-red-100 rounded-lg transition-colors cursor-pointer">
+                          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                          </svg>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                } @empty {
+                  <tr>
+                    <td colspan="6" class="px-4 py-8 text-center text-gray-400 text-sm">
+                      No se encontraron niños registrados con ese criterio de búsqueda.
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    }
+  }
+
+  <!-- ========================================================================= -->
+  <!-- MODAL EDITAR ADULTO RESPONSABLE                                           -->
+  <!-- ========================================================================= -->
+  @if (showEditTutorModal && tutorEditando) {
+    <div class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 backdrop-blur-xs p-4 overflow-y-auto">
+      <div class="bg-white rounded-2xl shadow-2xl max-w-xl w-full mx-auto overflow-hidden border border-gray-100 my-auto max-h-[90vh] flex flex-col">
+        <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+          <h3 class="text-base font-bold text-gray-900">Editar Adulto Responsable</h3>
+          <button type="button" (click)="cerrarEditarTutor()" class="text-gray-400 hover:text-gray-600 p-1 rounded-lg">
+            ✕
+          </button>
+        </div>
+
+        <div class="p-6 overflow-y-auto flex-1 text-xs">
+          <form [formGroup]="tutorForm" (ngSubmit)="guardarEdicionTutor()" class="space-y-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label class="block font-semibold text-gray-700 mb-1">Nombre Completo *</label>
+                <input type="text" formControlName="nombres_apellidos"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+              </div>
+              <div>
+                <label class="block font-semibold text-gray-700 mb-1">Cédula / Pasaporte (hasta 25 car.) *</label>
+                <input type="text" formControlName="cedula" maxlength="25"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div>
+                <label class="block font-semibold text-gray-700 mb-1">Nombre preferido / Alias</label>
+                <input type="text" formControlName="alias"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+              </div>
+              <div>
+                <label class="block font-semibold text-gray-700 mb-1">Parentesco *</label>
+                <select formControlName="parentesco"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                  <option value="">Seleccione...</option>
+                  <option value="Mamá">Mamá</option>
+                  <option value="Papá">Papá</option>
+                  <option value="Tio (a)">Tio (a)</option>
+                  <option value="Abuelo(a)">Abuelo(a)</option>
+                  <option value="Hermano (a)">Hermano (a)</option>
+                  <option value="Nana">Nana</option>
+                  <option value="Otro familiar">Otro familiar</option>
+                  <option value="Otro cuidador ( no familiar)">Otro cuidador ( no familiar)</option>
+                </select>
+              </div>
+              <div>
+                <label class="block font-semibold text-gray-700 mb-1">Sector</label>
+                <input type="text" formControlName="sector"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label class="block font-semibold text-gray-700 mb-1">WhatsApp / Teléfono *</label>
+                <input type="text" formControlName="whatsapp"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+              </div>
+              <div>
+                <label class="block font-semibold text-gray-700 mb-1">Correo Electrónico</label>
+                <input type="email" formControlName="correo"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label class="block font-semibold text-gray-700 mb-1">Tipo de Pase</label>
+                <select formControlName="tipo_pase"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                  <option value="">Sin tipo de pase</option>
+                  <option value="Fidelidad">1. Fidelidad</option>
+                  <option value="Nuevo Cliente">2. Nuevo Cliente</option>
+                  <option value="Alianza / Grupos">3. Alianza / Grupos</option>
+                  <option value="Ningun Pase">4. Ningun Pase</option>
+                </select>
+              </div>
+              <div>
+                <label class="block font-semibold text-gray-700 mb-1">Observaciones Tipo de Pase</label>
+                <input type="text" formControlName="observaciones_tipo_pase"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+              </div>
+            </div>
+          </form>
+        </div>
+
+        <div class="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-3">
+          <button type="button" (click)="cerrarEditarTutor()" [disabled]="isSavingTutor"
+            class="px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded-xl font-semibold text-xs hover:bg-gray-100 cursor-pointer">
+            Cancelar
+          </button>
+          <button type="button" (click)="guardarEdicionTutor()" [disabled]="isSavingTutor"
+            class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-xs shadow-sm cursor-pointer disabled:opacity-50">
+            {{ isSavingTutor ? 'Guardando...' : 'Guardar Cambios' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- ========================================================================= -->
+  <!-- MODAL ELIMINAR ADULTO RESPONSABLE                                         -->
+  <!-- ========================================================================= -->
+  @if (showDeleteTutorModal && tutorAEliminar) {
+    <div class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 backdrop-blur-xs p-4">
+      <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-auto overflow-hidden border border-red-100 p-6 space-y-5">
+        <div class="flex items-center gap-3">
+          <span class="h-10 w-10 bg-red-100 text-red-600 rounded-xl flex items-center justify-center font-bold">⚠️</span>
+          <div>
+            <h3 class="text-base font-bold text-gray-900">¿Eliminar Adulto Responsable?</h3>
+            <p class="text-xs text-gray-500">Esta acción eliminará el registro de la base de datos.</p>
+          </div>
+        </div>
+
+        <div class="p-3.5 bg-red-50 rounded-xl border border-red-100 text-xs text-red-900 space-y-1">
+          <p class="font-bold text-sm">{{ tutorAEliminar.nombres_apellidos }}</p>
+          <p>Cédula: {{ tutorAEliminar.cedula || 'S/N' }}</p>
+        </div>
+
+        <div class="flex justify-end gap-2.5">
+          <button type="button" (click)="cerrarEliminarTutor()" [disabled]="isDeletingTutor"
+            class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-semibold text-xs cursor-pointer">
+            Cancelar
+          </button>
+          <button type="button" (click)="ejecutarEliminarTutor()" [disabled]="isDeletingTutor"
+            class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold text-xs cursor-pointer disabled:opacity-50">
+            {{ isDeletingTutor ? 'Eliminando...' : 'Sí, Eliminar Adulto' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- ========================================================================= -->
+  <!-- MODAL EDITAR NIÑO(A)                                                      -->
+  <!-- ========================================================================= -->
+  @if (showEditNinoModal && ninoEditando) {
+    <div class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 backdrop-blur-xs p-4 overflow-y-auto">
+      <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full mx-auto overflow-hidden border border-gray-100 my-auto">
+        <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+          <h3 class="text-base font-bold text-gray-900">Editar Datos del Niño(a)</h3>
+          <button type="button" (click)="cerrarEditarNino()" class="text-gray-400 hover:text-gray-600 p-1 rounded-lg">
+            ✕
+          </button>
+        </div>
+
+        <div class="p-6 text-xs">
+          <form [formGroup]="ninoForm" (ngSubmit)="guardarEdicionNino()" class="space-y-4">
+            <div>
+              <label class="block font-semibold text-gray-700 mb-1">Nombres y Apellidos *</label>
+              <input type="text" formControlName="nombres_apellidos"
+                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label class="block font-semibold text-gray-700 mb-1">Nombre preferido / Diminutivo</label>
+                <input type="text" formControlName="alias"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+              </div>
+              <div>
+                <label class="block font-semibold text-gray-700 mb-1">Fecha de Nacimiento *</label>
+                <input type="date" formControlName="fecha_nacimiento"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+              </div>
+            </div>
+
+            <div>
+              <label class="block font-semibold text-gray-700 mb-1">Notas / Restricciones Médicas</label>
+              <textarea formControlName="notas" rows="2"
+                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none resize-none"></textarea>
+            </div>
+          </form>
+        </div>
+
+        <div class="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-3">
+          <button type="button" (click)="cerrarEditarNino()" [disabled]="isSavingNino"
+            class="px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded-xl font-semibold text-xs hover:bg-gray-100 cursor-pointer">
+            Cancelar
+          </button>
+          <button type="button" (click)="guardarEdicionNino()" [disabled]="isSavingNino"
+            class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-xs shadow-sm cursor-pointer disabled:opacity-50">
+            {{ isSavingNino ? 'Guardando...' : 'Guardar Niño(a)' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- ========================================================================= -->
+  <!-- MODAL ELIMINAR NIÑO(A)                                                    -->
+  <!-- ========================================================================= -->
+  @if (showDeleteNinoModal && ninoAEliminar) {
+    <div class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 backdrop-blur-xs p-4">
+      <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-auto overflow-hidden border border-red-100 p-6 space-y-5">
+        <div class="flex items-center gap-3">
+          <span class="h-10 w-10 bg-red-100 text-red-600 rounded-xl flex items-center justify-center font-bold">⚠️</span>
+          <div>
+            <h3 class="text-base font-bold text-gray-900">¿Eliminar Niño(a)?</h3>
+            <p class="text-xs text-gray-500">Se eliminará al niño(a) y sus vínculos de la base de datos.</p>
+          </div>
+        </div>
+
+        <div class="p-3.5 bg-red-50 rounded-xl border border-red-100 text-xs text-red-900 space-y-1">
+          <p class="font-bold text-sm">👶 {{ ninoAEliminar.nombres_apellidos }}</p>
+          <p>Fecha de nacimiento: {{ ninoAEliminar.fecha_nacimiento || 'Sin fecha' }}</p>
+        </div>
+
+        <div class="flex justify-end gap-2.5">
+          <button type="button" (click)="cerrarEliminarNino()" [disabled]="isDeletingNino"
+            class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-semibold text-xs cursor-pointer">
+            Cancelar
+          </button>
+          <button type="button" (click)="ejecutarEliminarNino()" [disabled]="isDeletingNino"
+            class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold text-xs cursor-pointer disabled:opacity-50">
+            {{ isDeletingNino ? 'Eliminando...' : 'Sí, Eliminar Niño(a)' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- ========================================================================= -->
+  <!-- MODAL AÑADIR NIÑO A UN ADULTO RESPONSABLE                                 -->
+  <!-- ========================================================================= -->
+  @if (showAddNinoATutorModal && tutorParaNuevoNino) {
+    <div class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 backdrop-blur-xs p-4 overflow-y-auto">
+      <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full mx-auto overflow-hidden border border-gray-100 my-auto">
+        <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-pink-50/70">
+          <div>
+            <h3 class="text-base font-bold text-gray-900">Añadir Niño(a) al Adulto Responsable</h3>
+            <p class="text-xs text-pink-700 font-semibold">Adulto: {{ tutorParaNuevoNino.nombres_apellidos }}</p>
+          </div>
+          <button type="button" (click)="cerrarAgregarNinoATutor()" class="text-gray-400 hover:text-gray-600 p-1 rounded-lg">
+            ✕
+          </button>
+        </div>
+
+        <div class="p-6 text-xs">
+          <form [formGroup]="nuevoNinoForm" (ngSubmit)="guardarNuevoNinoParaTutor()" class="space-y-4">
+            <div>
+              <label class="block font-semibold text-gray-700 mb-1">Nombres y Apellidos del Niño(a) *</label>
+              <div class="flex rounded-lg shadow-2xs">
+                <input type="text" formControlName="nombres_apellidos" (input)="onInputNombreNuevoNino()"
+                  placeholder="Ej. Mateo Rodríguez"
+                  class="flex-1 px-3 py-2 border border-gray-300 rounded-l-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                <button type="button" (click)="buscarNinoExistenteParaTutor()" [disabled]="isSearchingNinoExistente"
+                  class="px-3 py-2 bg-indigo-50 border border-l-0 border-indigo-200 text-indigo-700 font-bold rounded-r-lg hover:bg-indigo-100 cursor-pointer">
+                  {{ isSearchingNinoExistente ? 'Buscando...' : 'Buscar existente' }}
+                </button>
+              </div>
+
+              @if (resultadosBusquedaNinoModal.length > 0) {
+                <ul class="mt-2 border border-indigo-100 rounded-lg bg-white shadow-md max-h-40 overflow-y-auto divide-y divide-gray-50">
+                  @for (ninoEnc of resultadosBusquedaNinoModal; track ninoEnc.id) {
+                    <li (click)="seleccionarNinoExistenteModal(ninoEnc)"
+                      class="px-3 py-2 hover:bg-indigo-50 cursor-pointer flex justify-between items-center">
+                      <span class="font-bold text-gray-800">{{ ninoEnc.nombres_apellidos }}</span>
+                      <span class="text-[11px] text-gray-400">{{ ninoEnc.fecha_nacimiento ? (ninoEnc.fecha_nacimiento | slice:0:10) : 'Sin fecha' }}</span>
+                    </li>
+                  }
+                </ul>
+              }
+              @if (ninoExistenteSeleccionadoId) {
+                <p class="mt-1 text-[11px] text-emerald-600 font-semibold">✓ Niño existente seleccionado (se vinculará a este adulto responsable).</p>
+              }
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label class="block font-semibold text-gray-700 mb-1">Nombre preferido / Diminutivo</label>
+                <input type="text" formControlName="alias" placeholder="Ej. Mate"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+              </div>
+              <div>
+                <label class="block font-semibold text-gray-700 mb-1">Fecha de Nacimiento *</label>
+                <input type="date" formControlName="fecha_nacimiento"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+              </div>
+            </div>
+
+            <div>
+              <label class="block font-semibold text-gray-700 mb-1">Notas / Restricciones Médicas</label>
+              <textarea formControlName="notas" rows="2" placeholder="Ej. Alérgico al maní..."
+                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none resize-none"></textarea>
+            </div>
+          </form>
+        </div>
+
+        <div class="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-3">
+          <button type="button" (click)="cerrarAgregarNinoATutor()" [disabled]="isSavingNuevoNino"
+            class="px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded-xl font-semibold text-xs hover:bg-gray-100 cursor-pointer">
+            Cancelar
+          </button>
+          <button type="button" (click)="guardarNuevoNinoParaTutor()" [disabled]="isSavingNuevoNino"
+            class="px-5 py-2 bg-pink-600 hover:bg-pink-700 text-white rounded-xl font-bold text-xs shadow-sm cursor-pointer disabled:opacity-50">
+            {{ isSavingNuevoNino ? 'Guardando...' : 'Guardar y Vincular Niño(a)' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- ========================================================================= -->
+  <!-- MODAL AÑADIR ADULTO RESPONSABLE A UN NIÑO(A)                              -->
+  <!-- ========================================================================= -->
+  @if (showAddTutorANinoModal && ninoParaNuevoTutor) {
+    <div class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 backdrop-blur-xs p-4 overflow-y-auto">
+      <div class="bg-white rounded-2xl shadow-2xl max-w-xl w-full mx-auto overflow-hidden border border-gray-100 my-auto max-h-[90vh] flex flex-col">
+        <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-indigo-50/70">
+          <div>
+            <h3 class="text-base font-bold text-gray-900">Añadir Adulto Responsable al Niño(a)</h3>
+            <p class="text-xs text-indigo-700 font-semibold">Niño(a): {{ ninoParaNuevoTutor.nombres_apellidos }}</p>
+          </div>
+          <button type="button" (click)="cerrarAgregarTutorANino()" class="text-gray-400 hover:text-gray-600 p-1 rounded-lg">
+            ✕
+          </button>
+        </div>
+
+        <div class="p-6 overflow-y-auto flex-1 text-xs">
+          <form [formGroup]="nuevoTutorForm" (ngSubmit)="guardarNuevoTutorParaNino()" class="space-y-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label class="block font-semibold text-gray-700 mb-1">Cédula / Pasaporte (hasta 25 car.) *</label>
+                <div class="flex rounded-lg shadow-2xs">
+                  <input type="text" formControlName="cedula" maxlength="25" placeholder="Ej. 1712345678"
+                    class="flex-1 px-3 py-2 border border-gray-300 rounded-l-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                  <button type="button" (click)="buscarTutorExistentePorCedulaModal()" [disabled]="isSearchingTutorExistente"
+                    class="px-3 py-2 bg-indigo-50 border border-l-0 border-indigo-200 text-indigo-700 font-bold rounded-r-lg hover:bg-indigo-100 cursor-pointer">
+                    {{ isSearchingTutorExistente ? '...' : 'Buscar' }}
+                  </button>
+                </div>
+                @if (mensajeBusquedaTutorModal) {
+                  <p class="mt-1 text-[11px] font-medium text-indigo-600">{{ mensajeBusquedaTutorModal }}</p>
+                }
+              </div>
+
+              <div>
+                <label class="block font-semibold text-gray-700 mb-1">Nombre Completo *</label>
+                <input type="text" formControlName="nombres_apellidos" placeholder="Ej. Laura Sánchez"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div>
+                <label class="block font-semibold text-gray-700 mb-1">Nombre preferido / Alias</label>
+                <input type="text" formControlName="alias" placeholder="Ej. Mamá Laura"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+              </div>
+              <div>
+                <label class="block font-semibold text-gray-700 mb-1">Parentesco *</label>
+                <select formControlName="parentesco"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                  <option value="">Seleccione...</option>
+                  <option value="Mamá">Mamá</option>
+                  <option value="Papá">Papá</option>
+                  <option value="Tio (a)">Tio (a)</option>
+                  <option value="Abuelo(a)">Abuelo(a)</option>
+                  <option value="Hermano (a)">Hermano (a)</option>
+                  <option value="Nana">Nana</option>
+                  <option value="Otro familiar">Otro familiar</option>
+                  <option value="Otro cuidador ( no familiar)">Otro cuidador ( no familiar)</option>
+                </select>
+              </div>
+              <div>
+                <label class="block font-semibold text-gray-700 mb-1">Sector</label>
+                <input type="text" formControlName="sector" placeholder="Ej. Cumbayá"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label class="block font-semibold text-gray-700 mb-1">WhatsApp / Teléfono *</label>
+                <input type="text" formControlName="whatsapp" placeholder="Ej. 0991234567"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+              </div>
+              <div>
+                <label class="block font-semibold text-gray-700 mb-1">Correo Electrónico</label>
+                <input type="email" formControlName="correo" placeholder="Ej. laura@correo.com"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label class="block font-semibold text-gray-700 mb-1">Tipo de Pase</label>
+                <select formControlName="tipo_pase"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                  <option value="">Sin tipo de pase</option>
+                  <option value="Fidelidad">1. Fidelidad</option>
+                  <option value="Nuevo Cliente">2. Nuevo Cliente</option>
+                  <option value="Alianza / Grupos">3. Alianza / Grupos</option>
+                  <option value="Ningun Pase">4. Ningun Pase</option>
+                </select>
+              </div>
+              <div>
+                <label class="block font-semibold text-gray-700 mb-1">Observaciones Tipo de Pase</label>
+                <input type="text" formControlName="observaciones_tipo_pase"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+              </div>
+            </div>
+          </form>
+        </div>
+
+        <div class="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-3">
+          <button type="button" (click)="cerrarAgregarTutorANino()" [disabled]="isSavingNuevoTutor"
+            class="px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded-xl font-semibold text-xs hover:bg-gray-100 cursor-pointer">
+            Cancelar
+          </button>
+          <button type="button" (click)="guardarNuevoTutorParaNino()" [disabled]="isSavingNuevoTutor"
+            class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-xs shadow-sm cursor-pointer disabled:opacity-50">
+            {{ isSavingNuevoTutor ? 'Guardando...' : 'Guardar y Vincular Adulto' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- TOAST FLOTANTE -->
+  @if (showToast) {
+    <div class="fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-2xl shadow-xl border text-sm font-medium"
+      [ngClass]="toastType === 'success' ? 'bg-emerald-900 text-emerald-100 border-emerald-700' : 'bg-red-900 text-red-100 border-red-700'">
+      <span>{{ toastMessage }}</span>
+    </div>
+  }
+
+</div>
